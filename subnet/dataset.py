@@ -112,7 +112,8 @@ class KodakDataSet(data.Dataset):
 
 class DataSet(data.Dataset):
     def __init__(self, latents_dtype, sigma, path="../../data/vimeo_septuplet/test.txt", im_height=256, im_width=256):
-        self.image_list1, self.image_list2, self.image_list3 = self.get_vimeo(filefolderlist=path)
+        root_path = os.path.join(os.path.dirname(path), "sequences")
+        self.image_list1, self.image_list2, self.image_list3 = self.get_vimeo(rootdir=root_path ,filefolderlist=path)
         self.im_height = im_height
         self.im_width = im_width
         self.latents_dtype = latents_dtype

@@ -40,7 +40,7 @@ print_step = 100
 cal_step = 10
 # print_step = 10
 warmup_step = 0  # // gpu_num
-gpu_per_batch = 1
+gpu_per_batch = 2
 test_step = 10000  # // gpu_num
 tot_epoch = 100
 tot_step = 3000000
@@ -388,7 +388,7 @@ if __name__ == "__main__":
         exit(0)
 
     tb_logger = SummaryWriter('./events')
-    train_dataset = DataSet(latents_dtype, sigma, "../../data/vimeo_septuplet/test.txt")
+    train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()
     stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch* gpu_num))  # * gpu_num))

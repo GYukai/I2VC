@@ -1,3 +1,4 @@
+source /root/anaconda3/bin/activate gyk
 ROOT=./
 export PYTHONPATH=$PYTHONPATH:$ROOT
 mkdir $ROOT/snapshot
