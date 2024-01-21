@@ -1,0 +1,10 @@
+{
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}

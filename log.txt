@@ -1,0 +1,257 @@
+2023-12-25 06:20:14,980 - INFO] CAM_I training
+2023-12-25 06:20:14,980 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:20:14,998 - INFO] CAM_I training
+2023-12-25 06:20:14,998 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:20:15,007 - INFO] CAM_I training
+2023-12-25 06:20:15,007 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:20:15,023 - INFO] CAM_I training
+2023-12-25 06:20:15,023 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:20:16,146 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:22:41,632 - INFO] CAM_I training
+2023-12-25 06:22:41,632 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:22:41,654 - INFO] CAM_I training
+2023-12-25 06:22:41,654 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:22:41,674 - INFO] CAM_I training
+2023-12-25 06:22:41,674 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:22:41,694 - INFO] CAM_I training
+2023-12-25 06:22:41,694 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:22:42,702 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:22:42,706 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:22:42,711 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:22:42,746 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:28:08,465 - INFO] CAM_I training
+2023-12-25 06:28:08,465 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:28:08,466 - INFO] CAM_I training
+2023-12-25 06:28:08,466 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:28:08,512 - INFO] CAM_I training
+2023-12-25 06:28:08,512 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:28:08,526 - INFO] CAM_I training
+2023-12-25 06:28:08,527 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:28:09,537 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:28:09,553 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:28:09,581 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:28:09,584 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:29:28,079 - INFO] CAM_I training
+2023-12-25 06:29:28,079 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:29:28,143 - INFO] CAM_I training
+2023-12-25 06:29:28,143 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:29:28,151 - INFO] CAM_I training
+2023-12-25 06:29:28,151 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:29:28,248 - INFO] CAM_I training
+2023-12-25 06:29:28,248 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:29:29,157 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:29:29,180 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:29:29,180 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:29:29,216 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:37:29,670 - INFO] CAM_I training
+2023-12-25 06:37:29,670 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:37:29,697 - INFO] CAM_I training
+2023-12-25 06:37:29,697 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:37:29,704 - INFO] CAM_I training
+2023-12-25 06:37:29,705 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:37:29,751 - INFO] CAM_I training
+2023-12-25 06:37:29,751 - INFO] {
+    "tot_epoch": 100,
+    "tot_step": 2500000,
+    "train_lambda": 256,
+    "lr": {
+        "base": 1e-5,
+        "decay": 0.1,
+        "decay_interval": 2300000
+    }
+}
+
+2023-12-25 06:37:30,779 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:37:30,786 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:37:30,831 - INFO] Processing training step: 1 / 2 
+2023-12-25 06:37:30,859 - INFO] Processing training step: 1 / 2 
