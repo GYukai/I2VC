@@ -28,7 +28,8 @@ from accelerate import Accelerator
 from subnet.src.lpips_pytorch import lpips
 from accelerate import DistributedDataParallelKwargs
 
-
+# TODO loss
+# TODO VAE2original
 
 torch.backends.cudnn.enabled = True
 gpu_num = torch.cuda.device_count()
