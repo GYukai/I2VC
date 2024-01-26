@@ -120,7 +120,7 @@ class CAM_net(nn.Module):
         extra_kwargs["eta"] = 1
         # feature = self.feature_extract(input_image)
         # context = self.context_refine(feature)
-
+# TODO 1 in
         feature_vae = self.vae.encode(input_image).latents
         feature = self.contextualEncoder(feature_vae, lmd, lmd_boundary)
         z = self.priorEncoder(feature)
@@ -146,7 +146,7 @@ class CAM_net(nn.Module):
         means_hat, scales_hat = gaussian_params.chunk(2, 1)
 
         low_res_latents = self.contextualDecoder_part1(compressed_y_renorm, lmd, lmd_boundary)
-        
+        # TODO out
         for t in self.scheduler.timesteps:
             latents_input = torch.cat([latents, low_res_latents], dim=1)
             latents_input = self.scheduler.scale_model_input(latents_input, t)
