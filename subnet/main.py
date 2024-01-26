@@ -1,4 +1,4 @@
-# -*- coding: gbk -*-
+# -*- coding: utf8 -*-
 import os
 import argparse
 import torch
