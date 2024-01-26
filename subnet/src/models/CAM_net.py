@@ -146,7 +146,7 @@ class CAM_net(nn.Module):
         means_hat, scales_hat = gaussian_params.chunk(2, 1)
 
         low_res_latents = self.contextualDecoder_part1(compressed_y_renorm, lmd, lmd_boundary)
-        # TODO out
+# TODO out
         for t in self.scheduler.timesteps:
             latents_input = torch.cat([latents, low_res_latents], dim=1)
             latents_input = self.scheduler.scale_model_input(latents_input, t)

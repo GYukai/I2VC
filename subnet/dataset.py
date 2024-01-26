@@ -90,7 +90,7 @@ class UVGDataSet_I(data.Dataset):
         return input_images
 
 class KodakDataSet(data.Dataset):
-    def __init__(self, root="../../data/Kodak24/"):
+    def __init__(self, root="./data/Kodak24/"):
         cnt = 24
         self.inputpath = []
         for i in range(cnt):
