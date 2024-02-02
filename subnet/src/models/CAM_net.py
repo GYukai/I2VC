@@ -147,6 +147,7 @@ class CAM_net(nn.Module):
 
         low_res_latents = self.contextualDecoder_part1(compressed_y_renorm, lmd, lmd_boundary)
 # TODO out
+        feature_distortion = torch.mean((low_res_latents - feature_vae).pow(2))
         for t in self.scheduler.timesteps:
             latents_input = torch.cat([latents, low_res_latents], dim=1)
             latents_input = self.scheduler.scale_model_input(latents_input, t)
@@ -169,7 +170,7 @@ class CAM_net(nn.Module):
         distortion = torch.mean((recon_image - input_image).pow(2))
         lps_distortion = lpips(recon_image, input_image, net_type='squeeze')
         
-        return clipped_recon_image, distortion, lps_distortion, bpp 
+        return clipped_recon_image, distortion, lps_distortion, bpp, feature_distortion
 
 
 # =============================================================================================
