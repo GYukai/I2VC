@@ -290,7 +290,7 @@ def train(epoch, global_step):
         clipped_recon_bimage, distortion, lpips_distortion, bpp, feature_distortion = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
         
         distortion, bpp, lpips_distortion, feature_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion), torch.mean(feature_distortion)
-        rd_loss = var_lambda * (distortion + 0.05 * lpips_distortion + 0.05 * feature_distortion) + bpp
+        rd_loss = var_lambda * ((distortion + 0.015 * lpips_distortion + 0.12 * feature_distortion)/3) + bpp
         
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
