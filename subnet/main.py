@@ -286,7 +286,7 @@ def train(epoch, global_step):
         image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
         quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
         latents = Variable(input[5])
-        var_lambda = random.randint(8,256)
+        var_lambda = random.randint(8,512)
         clipped_recon_bimage, distortion, lpips_distortion, bpp, feature_distortion = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
         
         distortion, bpp, lpips_distortion, feature_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion), torch.mean(feature_distortion)
