@@ -230,7 +230,7 @@ def testkodak(global_step):
             latents = torch.randn(latents_shape, dtype=latents_dtype)
             latents = Var(latents * sigma)
 
-            clipped_recon_image, distortion, lps_distortion, bpp, feature_distortion  = net(frame, latents, train_lambda_tensor, 2048)
+            clipped_recon_image, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
             recon_path = "./fullpreformance/kodak_recon/"
             img_name = 'kodim' + str(num+1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
             save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path, img_name))
@@ -286,11 +286,11 @@ def train(epoch, global_step):
         image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
         quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
         latents = Variable(input[5])
-        var_lambda = random.randint(8,256)
-        clipped_recon_bimage, distortion, lpips_distortion, bpp, feature_distortion = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
+        var_lambda = random.randint(1,512)
+        clipped_recon_bimage, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
         
-        distortion, bpp, lpips_distortion, feature_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion), torch.mean(feature_distortion)
-        rd_loss = var_lambda * (distortion + 0.015 * lpips_distortion + 0.12 * feature_distortion) + bpp
+        distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
+        rd_loss = var_lambda * (distortion + 0.05 * lpips_distortion) + bpp
         
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
@@ -334,7 +334,7 @@ def train(epoch, global_step):
             print(log)
             log = 'details : psnr : {:.2f} bpp : {:.6f}'.format(sumpsnr / cal_cnt, sumbpp / cal_cnt)
             print(log)
-            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, feature_distortion: {feature_distortion}")
+            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}")
             bat_cnt = 0
             cal_cnt = 0
             sumbpp = sumloss = sumpsnr = 0
@@ -365,7 +365,7 @@ if __name__ == "__main__":
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
     
-    model = CAM_net(vae,unet,scheduler)
+    model:CAM_net = CAM_net(vae,unet,scheduler)
     print("# of model parameters is: " + str(utility.count_network_parameters(model)))
 
     if args.pretrain != '':
@@ -387,7 +387,7 @@ if __name__ == "__main__":
         testkodak(global_step)
         exit(0)
 
-    tb_logger = SummaryWriter('./events')
+    tb_logger = SummaryWriter('./events/2024_02_25_run')
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()

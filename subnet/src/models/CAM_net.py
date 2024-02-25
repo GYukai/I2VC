@@ -59,7 +59,9 @@ class CAM_net(nn.Module):
 
         self.gaussian_encoder = GaussianEncoder()
 
-        self.contextualEncoder = contextualEncoder()
+        self.contextualEncoder: contextualEncoder = contextualEncoder()
+        self.featureExtractor: featureExtractor = featureExtractor()
+
         self.contextualDecoder_part1 = contextualDecoder_part1()
 
         self.contextualDecoder_part_2 = nn.Sequential(
@@ -119,13 +121,14 @@ class CAM_net(nn.Module):
         self.gaussian_encoder.update(force=force)
 
     def forward(self, input_image, latents, lmd=None, lmd_boundary=None, previous_frame=None, feature_frame=None,
-                quant_noise_feature=None, quant_noise_z=None):
+                quant_noise_feature=None, quant_noise_z=None) -> (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor):
         extra_kwargs = {}
         extra_kwargs["eta"] = 1
         # feature = self.feature_extract(input_image)
         # context = self.context_refine(feature)
-# TODO 1 in
-        feature_vae = self.vae.encode(input_image).latents
+        # TODO 1 in
+        # feature_vae = self.vae.encode(input_image).latents # 3, 64, 64
+        feature_vae = self.featureExtractor(input_image, lmd, lmd_boundary) # N(192), 64, 64
         feature = self.contextualEncoder(feature_vae, lmd, lmd_boundary)
         z = self.priorEncoder(feature)
         if self.training:
@@ -151,7 +154,7 @@ class CAM_net(nn.Module):
 
         low_res_latents = self.contextualDecoder_part1(compressed_y_renorm, lmd, lmd_boundary)
         # TODO out
-        feature_distortion = torch.mean((low_res_latents - feature_vae).pow(2))
+        # feature_distortion = torch.mean((low_res_latents - feature_vae).pow(2))
         for t in self.scheduler.timesteps:
             latents_input = torch.cat([latents, low_res_latents], dim=1)
             latents_input = self.scheduler.scale_model_input(latents_input, t)
@@ -174,7 +177,7 @@ class CAM_net(nn.Module):
         distortion = torch.mean((recon_image - input_image).pow(2))
         lps_distortion = lpips(recon_image, input_image, net_type='squeeze')
 
-        return clipped_recon_image, distortion, lps_distortion, bpp, feature_distortion
+        return clipped_recon_image, distortion, lps_distortion, bpp
 
 
 # =============================================================================================
@@ -320,22 +323,13 @@ class spatial_scaling_network(nn.Module):
 class contextualEncoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, out_channel_N, 5, stride=2, padding=2)
+        self.conv1 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
         self.gdn1 = GDN(out_channel_N)
         self.res1 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
-        self.conv2 = nn.Conv2d(out_channel_N, out_channel_N, 3, stride=1, padding=1)
-        self.gdn2 = GDN(out_channel_N)
-        self.res2 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
-        self.conv3 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
-        self.gdn3 = GDN(out_channel_N)
-        self.conv4 = nn.Conv2d(out_channel_N, out_channel_M, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
 
         self.spatial_gating_unit_1 = spatial_gating_unit(out_channel_N)
-        self.spatial_gating_unit_2 = spatial_gating_unit(out_channel_N)
-        self.spatial_gating_unit_3 = spatial_gating_unit(out_channel_N)
         self.spatial_scaling_network_1 = spatial_scaling_network(num_filters=out_channel_N)
-        self.spatial_scaling_network_2 = spatial_scaling_network(num_filters=out_channel_N)
-        self.spatial_scaling_network_3 = spatial_scaling_network(num_filters=out_channel_N)
 
     def forward(self, x, lmd, lmd_boundary):
         lmd_normal = (lmd / lmd_boundary)
@@ -345,16 +339,30 @@ class contextualEncoder(nn.Module):
         sf = self.spatial_scaling_network_1(i_mask, lmd_normal)
         x = x * sf
         x = self.res1(x)
-        x = self.gdn2(self.conv2(x))
-        x, i_mask = self.spatial_gating_unit_2(x)
-        sf = self.spatial_scaling_network_2(i_mask, lmd_normal)
+        return self.conv2(x)
+
+
+class featureExtractor(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, out_channel_N, 5, stride=2, padding=2)
+        self.gdn1 = GDN(out_channel_N)
+        self.res1 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
+        self.conv2 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
+
+        self.spatial_gating_unit_1 = spatial_gating_unit(out_channel_N)
+        self.spatial_scaling_network_1 = spatial_scaling_network(num_filters=out_channel_N)
+
+    def forward(self, x, lmd, lmd_boundary):
+        lmd_normal = (lmd / lmd_boundary)
+
+        x = self.gdn1(self.conv1(x))
+        x, i_mask = self.spatial_gating_unit_1(x)
+        sf = self.spatial_scaling_network_1(i_mask, lmd_normal)
         x = x * sf
-        x = self.res2(x)
-        x = self.gdn3(self.conv3(x))
-        x, i_mask = self.spatial_gating_unit_3(x)
-        sf = self.spatial_scaling_network_3(i_mask, lmd_normal)
-        x = x * sf
-        return self.conv4(x)
+        x = self.res1(x)
+        return self.conv2(x)
+
 
 class contextualDecoder_part1(nn.Module):
     def __init__(self):
