@@ -9,11 +9,13 @@ from ..entropy_models.video_entropy_models import BitEstimator, GaussianEncoder
 from ..entropy_models.conditional_entropy_models import EntropyBottleneck, GaussianConditional
 from ..utils.stream_helper import get_downsampled_shape
 from ..layers.layers import MaskedConv2d, subpel_conv3x3
-from .Restormer import TransformerBlock 
+from .Restormer import TransformerBlock
 from ..lpips_pytorch import lpips
+
 
 def save_model(model, iter):
     torch.save(model.state_dict(), "./snapshot/iter{}.model".format(iter))
+
 
 def load_model(model, f):
     print("load DCVC format")
@@ -28,9 +30,10 @@ def load_model(model, f):
     if f.find('iter') != -1 and f.find('.model') != -1:
         st = f.find('iter') + 4
         ed = f.find('.model', st)
-        return int(f[st:ed])    #return step
+        return int(f[st:ed])  # return step
     else:
         return 0
+
 
 class CAM_net(nn.Module):
     def __init__(self, vae, unet, scheduler):
@@ -60,9 +63,10 @@ class CAM_net(nn.Module):
         self.contextualDecoder_part1 = contextualDecoder_part1()
 
         self.contextualDecoder_part_2 = nn.Sequential(
-            nn.Conv2d(out_channel_N+3, out_channel_N, 3, stride=1, padding=1),
+            nn.Conv2d(out_channel_N + 3, out_channel_N, 3, stride=1, padding=1),
             ResBlock(out_channel_N, out_channel_N, 3),
-            *[TransformerBlock(dim=out_channel_N, num_heads=1, ffn_expansion_factor=2.66, bias=False, LayerNorm_type='WithBias') for i in range(4)],
+            *[TransformerBlock(dim=out_channel_N, num_heads=1, ffn_expansion_factor=2.66, bias=False,
+                               LayerNorm_type='WithBias') for i in range(4)],
             nn.Conv2d(out_channel_N, 3, 3, stride=1, padding=1),
         )
 
@@ -81,14 +85,13 @@ class CAM_net(nn.Module):
             out_channel_M, 2 * out_channel_M, kernel_size=5, padding=2, stride=1
         )
         self.gaussian_conditional = GaussianConditional(None)
-        
 
         self.warp_weight = 0
         self.mxrange = 150
         self.calrealbits = False
 
     def quantize(self, inputs, mode, means=None):
-        assert(mode == "dequantize")
+        assert (mode == "dequantize")
         outputs = inputs.clone()
         outputs -= means
         outputs = torch.round(outputs)
@@ -115,7 +118,8 @@ class CAM_net(nn.Module):
         self.bitEstimator_z.update(force=force)
         self.gaussian_encoder.update(force=force)
 
-    def forward(self, input_image, latents, lmd = None, lmd_boundary = None, previous_frame = None, feature_frame=None, quant_noise_feature=None, quant_noise_z=None):
+    def forward(self, input_image, latents, lmd=None, lmd_boundary=None, previous_frame=None, feature_frame=None,
+                quant_noise_feature=None, quant_noise_z=None):
         extra_kwargs = {}
         extra_kwargs["eta"] = 1
         # feature = self.feature_extract(input_image)
@@ -128,7 +132,7 @@ class CAM_net(nn.Module):
             compressed_z = z + quant_noise_z
         else:
             compressed_z = torch.round(z)
-        
+
         params = self.priorDecoder(compressed_z)
 
         feature_renorm = feature
@@ -146,7 +150,7 @@ class CAM_net(nn.Module):
         means_hat, scales_hat = gaussian_params.chunk(2, 1)
 
         low_res_latents = self.contextualDecoder_part1(compressed_y_renorm, lmd, lmd_boundary)
-# TODO out
+        # TODO out
         feature_distortion = torch.mean((low_res_latents - feature_vae).pow(2))
         for t in self.scheduler.timesteps:
             latents_input = torch.cat([latents, low_res_latents], dim=1)
@@ -164,12 +168,12 @@ class CAM_net(nn.Module):
         pixel_num = im_shape[0] * im_shape[2] * im_shape[3]
         bpp_y = total_bits_y / pixel_num
         bpp_z = total_bits_z / pixel_num
-        bpp = bpp_y + bpp_z 
+        bpp = bpp_y + bpp_z
 
         # distortion
         distortion = torch.mean((recon_image - input_image).pow(2))
         lps_distortion = lpips(recon_image, input_image, net_type='squeeze')
-        
+
         return clipped_recon_image, distortion, lps_distortion, bpp, feature_distortion
 
 
@@ -180,11 +184,13 @@ out_channel_N = 192
 out_channel_M = 192
 middle_channel = 3
 
+
 class PriorEncoder_net(nn.Module):
     def __init__(self, in_channel, out_channel):
         super(PriorEncoder_net, self).__init__()
         self.l1 = nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1)
-        torch.nn.init.xavier_normal_(self.l1.weight.data, (math.sqrt(2 * (in_channel + out_channel) / (in_channel + in_channel))))
+        torch.nn.init.xavier_normal_(self.l1.weight.data,
+                                     (math.sqrt(2 * (in_channel + out_channel) / (in_channel + in_channel))))
         torch.nn.init.constant_(self.l1.bias.data, 0.01)
         self.r1 = nn.LeakyReLU(inplace=True)
         self.l2 = nn.Conv2d(out_channel, out_channel, 5, stride=2, padding=2)
@@ -194,11 +200,13 @@ class PriorEncoder_net(nn.Module):
         self.l3 = nn.Conv2d(out_channel, out_channel, 5, stride=2, padding=2)
         torch.nn.init.xavier_normal_(self.l3.weight.data, (math.sqrt(2)))
         torch.nn.init.constant_(self.l3.bias.data, 0.01)
+
     def forward(self, x):
         x = self.r1(self.l1(x))
         x = self.r2(self.l2(x))
         x = self.l3(x)
         return x
+
 
 class PriorDecoder_net(nn.Module):
     def __init__(self, in_channel, out_channel):
@@ -212,13 +220,16 @@ class PriorDecoder_net(nn.Module):
         torch.nn.init.constant_(self.l2.bias.data, 0.01)
         self.r2 = nn.LeakyReLU(inplace=True)
         self.l3 = nn.ConvTranspose2d(out_channel, out_channel, 3, stride=1, padding=1)
-        torch.nn.init.xavier_normal_(self.l3.weight.data, (math.sqrt(2 * (in_channel + out_channel) / (out_channel + out_channel))))
+        torch.nn.init.xavier_normal_(self.l3.weight.data,
+                                     (math.sqrt(2 * (in_channel + out_channel) / (out_channel + out_channel))))
         torch.nn.init.constant_(self.l3.bias.data, 0.01)
+
     def forward(self, x):
         x = self.r1(self.l1(x))
         x = self.r2(self.l2(x))
         x = self.l3(x)
         return x
+
 
 class Entropy_parameters_net(nn.Module):
     def __init__(self, channel):
@@ -234,47 +245,50 @@ class Entropy_parameters_net(nn.Module):
         self.l3 = nn.Conv2d(channel, channel, 1)
         torch.nn.init.xavier_normal_(self.l3.weight.data, (math.sqrt(2)))
         torch.nn.init.constant_(self.l3.bias.data, 0.01)
+
     def forward(self, x):
         x = self.r1(self.l1(x))
         x = self.r2(self.l2(x))
         x = self.l3(x)
         return x
 
+
 # =============================================================================================
 # =============================================================================================
 # =============================================================================================
-    
+
 
 class spatial_gating_unit(nn.Module):
     def __init__(self, num_filters):
         super().__init__()
         self.conv_1 = nn.Conv2d(num_filters, num_filters, kernel_size=3, stride=1, padding=1)
-        self.relu_1 = nn.ReLU(inplace=True)       
+        self.relu_1 = nn.ReLU(inplace=True)
         self.conv_2 = nn.Conv2d(num_filters, num_filters, kernel_size=3, stride=1, padding=1)
-        self.relu_2 = nn.ReLU(inplace=True)        
+        self.relu_2 = nn.ReLU(inplace=True)
         self.conv_3 = nn.Conv2d(num_filters, num_filters, kernel_size=1, stride=1, padding=0)
         self.sigmoid = nn.Sigmoid()
-        
+
     def forward(self, x):
         x_1 = self.conv_1(x)
         x_1 = self.relu_1(x_1)
-        
+
         x_2 = self.conv_2(x)
         x_2 = self.relu_2(x_2)
         x_2 = self.conv_3(x_2)
         i_mask = self.sigmoid(x_2)
-        
+
         x_gated = x_1 * i_mask + x
-        
+
         return x_gated, i_mask
-        
+
+
 class sf_mlp(nn.Module):
     def __init__(self, num_filters):
         super().__init__()
-        self.linear_1 = nn.Linear(2, 50)        # zyf
+        self.linear_1 = nn.Linear(2, 50)  # zyf
         self.relu = nn.ReLU(inplace=True)
         self.linear_2 = nn.Linear(50, num_filters)
-        
+
     def forward(self, lmd):
         cond = self.linear_1(lmd)
         cond = self.relu(cond)
@@ -282,40 +296,40 @@ class sf_mlp(nn.Module):
 
         w = cond.exp()
         return w
-        
-        
+
+
 class spatial_scaling_network(nn.Module):
     def __init__(self, num_filters):
-        super().__init__()        
+        super().__init__()
         self.sf_mlp = sf_mlp(num_filters)
-        
+
     def forward(self, i_mask, lmd_normed):
-        B,C,H,W = i_mask.shape
-        mask_map = torch.mean(i_mask,axis=1).view(B,1,H,W)  # (B,1,H,W)
-        cond_map = torch.ones_like(mask_map)    # (B,1,H,W)
+        B, C, H, W = i_mask.shape
+        mask_map = torch.mean(i_mask, axis=1).view(B, 1, H, W)  # (B,1,H,W)
+        cond_map = torch.ones_like(mask_map)  # (B,1,H,W)
         # print(cond_map.shape,lmd_normed.shape)
-        cond_map = lmd_normed * cond_map 
+        cond_map = lmd_normed * cond_map
         sf_input = torch.cat([mask_map, cond_map], axis=1)  # (B,2,H,W)
-        sf_input = sf_input.permute(0,3,2,1)    # (B,W,H,2)
+        sf_input = sf_input.permute(0, 3, 2, 1)  # (B,W,H,2)
         scaling_factor = self.sf_mlp(sf_input)  # (B,W,H,N)
-        scaling_factor = scaling_factor.permute(0,3,2,1)    # (B,N,H,W)
-        
+        scaling_factor = scaling_factor.permute(0, 3, 2, 1)  # (B,N,H,W)
+
         return scaling_factor
+
 
 class contextualEncoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, out_channel_N, 5, stride=2, padding=2)
         self.gdn1 = GDN(out_channel_N)
-        self.res1=ResBlock_LeakyReLU_0_Point_1(out_channel_N)
+        self.res1 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
         self.conv2 = nn.Conv2d(out_channel_N, out_channel_N, 3, stride=1, padding=1)
         self.gdn2 = GDN(out_channel_N)
         self.res2 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
         self.conv3 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
         self.gdn3 = GDN(out_channel_N)
         self.conv4 = nn.Conv2d(out_channel_N, out_channel_M, 3, stride=1, padding=1)
-        
-        
+
         self.spatial_gating_unit_1 = spatial_gating_unit(out_channel_N)
         self.spatial_gating_unit_2 = spatial_gating_unit(out_channel_N)
         self.spatial_gating_unit_3 = spatial_gating_unit(out_channel_N)
@@ -324,22 +338,22 @@ class contextualEncoder(nn.Module):
         self.spatial_scaling_network_3 = spatial_scaling_network(num_filters=out_channel_N)
 
     def forward(self, x, lmd, lmd_boundary):
-        lmd_normal = (lmd/lmd_boundary)
+        lmd_normal = (lmd / lmd_boundary)
 
         x = self.gdn1(self.conv1(x))
         x, i_mask = self.spatial_gating_unit_1(x)
         sf = self.spatial_scaling_network_1(i_mask, lmd_normal)
-        x = x*sf
+        x = x * sf
         x = self.res1(x)
         x = self.gdn2(self.conv2(x))
         x, i_mask = self.spatial_gating_unit_2(x)
         sf = self.spatial_scaling_network_2(i_mask, lmd_normal)
-        x = x*sf
+        x = x * sf
         x = self.res2(x)
         x = self.gdn3(self.conv3(x))
         x, i_mask = self.spatial_gating_unit_3(x)
         sf = self.spatial_scaling_network_3(i_mask, lmd_normal)
-        x = x*sf
+        x = x * sf
         return self.conv4(x)
 
 class contextualDecoder_part1(nn.Module):
@@ -353,9 +367,9 @@ class contextualDecoder_part1(nn.Module):
         self.spatial_scaling_network_1 = spatial_scaling_network(num_filters=out_channel_N)
 
     def forward(self, x, lmd, lmd_boundary):
-        lmd_normal = (lmd/lmd_boundary)
+        lmd_normal = (lmd / lmd_boundary)
         x = self.deconv1(x)
         x, i_mask = self.spatial_gating_unit_1(x)
         sf = self.spatial_scaling_network_1(i_mask, lmd_normal)
-        x = self.igdn1(x*sf)
+        x = self.igdn1(x * sf)
         return self.deconv2(x)
