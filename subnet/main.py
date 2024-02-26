@@ -277,6 +277,7 @@ def train(epoch, global_step):
     sumloss = 0
     sumpsnr = 0
     sumbpp = 0
+    sum_lpips = 0
     tot_iter = len(train_loader)
     t0 = datetime.datetime.now()
     
@@ -307,6 +308,7 @@ def train(epoch, global_step):
             cal_cnt += 1
             if distortion > 0:
                 psnr = 10 * (torch.log(1 * 1 / distortion) / np.log(10)).cpu().detach().numpy()
+                lpips = lpips_distortion.cpu().detach().numpy()
             else:
                 psnr = 100
             
@@ -315,6 +317,7 @@ def train(epoch, global_step):
             sumloss += loss_
             sumpsnr += psnr
             sumbpp += bpp.cpu().detach()
+            sum_lpips += lpips
 
 
         if (batch_idx % print_step) == 0 and bat_cnt > 1:
@@ -322,6 +325,7 @@ def train(epoch, global_step):
             tb_logger.add_scalar('rd_loss', sumloss / cal_cnt, global_step)
             tb_logger.add_scalar('psnr', sumpsnr / cal_cnt, global_step)
             tb_logger.add_scalar('bpp', sumbpp / cal_cnt, global_step)
+            tb_logger.add_scalar('lpips', sum_lpips / cal_cnt, global_step)
             t1 = datetime.datetime.now()
             deltatime = t1 - t0
             log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,
@@ -337,7 +341,7 @@ def train(epoch, global_step):
             print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}")
             bat_cnt = 0
             cal_cnt = 0
-            sumbpp = sumloss = sumpsnr = 0
+            sumbpp = sumloss = sumpsnr =sum_lpips = 0
             t0 = t1
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
