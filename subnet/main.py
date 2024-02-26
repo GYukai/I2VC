@@ -105,6 +105,7 @@ parser.add_argument('--rerank', action='store_true')
 parser.add_argument('--allpick', action='store_true')
 parser.add_argument('--config', dest='config', required=True,
                     help='hyperparameter of Reid in json format')
+parser.add_argument('--from_scratch', default=False, action='store_true')
 
 
 def parse_config(config):
@@ -372,9 +373,17 @@ if __name__ == "__main__":
     model:CAM_net = CAM_net(vae,unet,scheduler)
     print("# of model parameters is: " + str(utility.count_network_parameters(model)))
 
-    if args.pretrain != '':
-        print("loading pretrain : ", args.pretrain)
-        global_step = load_model(model, args.pretrain)
+    if not args.from_scratch:
+        if args.pretrain != '':
+            print("loading pretrain : ", args.pretrain)
+            global_step = load_model(model, args.pretrain)
+        else:
+            folder_path = "./snapshot/"
+            files = os.listdir(folder_path)
+            lastest_file = max(files, key=lambda x: os.path.getctime(folder_path + x))
+            print("AUTO LOAD : ", lastest_file)
+            print("loading pretrain : ", lastest_file)
+            global_step = load_model(model, folder_path + lastest_file)
 
     net = model
     # net = torch.nn.DataParallel(net, list(range(gpu_num)))
@@ -418,8 +427,10 @@ if __name__ == "__main__":
             save_model(model, global_step)
             print("Finish training")
             break
-
-        global_step = train(epoch, global_step)
+        try:
+            global_step = train(epoch, global_step)
+        except KeyboardInterrupt:
+            save_model(model, global_step)
         save_model(model, global_step)
 
         if global_step > 80765*3:
