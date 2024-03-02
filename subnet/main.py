@@ -288,7 +288,7 @@ def train(epoch, global_step):
         image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
         quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
         latents = Variable(input[5])
-        var_lambda = random.randint(1,512)
+        var_lambda = random.randint(1, 256)
         clipped_recon_bimage, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
         
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
@@ -400,7 +400,7 @@ if __name__ == "__main__":
         testkodak(global_step)
         exit(0)
 
-    tb_logger = SummaryWriter('./events/2024_02_25_run')
+    tb_logger = SummaryWriter('./events/1_to_256')
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()
@@ -431,6 +431,7 @@ if __name__ == "__main__":
             global_step = train(epoch, global_step)
         except KeyboardInterrupt:
             save_model(model, global_step)
+            break
         save_model(model, global_step)
 
         if global_step > 80765*3:
