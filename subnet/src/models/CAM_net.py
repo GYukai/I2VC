@@ -323,7 +323,7 @@ class spatial_scaling_network(nn.Module):
 class contextualEncoder(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
+        self.conv1 = nn.Conv2d(3, out_channel_N, 5, stride=2, padding=2)
         self.gdn1 = GDN(out_channel_N)
         self.res1 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
         self.conv2 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
@@ -348,7 +348,7 @@ class featureExtractor(nn.Module):
         self.conv1 = nn.Conv2d(3, out_channel_N, 5, stride=2, padding=2)
         self.gdn1 = GDN(out_channel_N)
         self.res1 = ResBlock_LeakyReLU_0_Point_1(out_channel_N)
-        self.conv2 = nn.Conv2d(out_channel_N, out_channel_N, 5, stride=2, padding=2)
+        self.conv2 = nn.Conv2d(out_channel_N, 3, 5, stride=2, padding=2)
 
         self.spatial_gating_unit_1 = spatial_gating_unit(out_channel_N)
         self.spatial_scaling_network_1 = spatial_scaling_network(num_filters=out_channel_N)

@@ -400,7 +400,7 @@ if __name__ == "__main__":
         testkodak(global_step)
         exit(0)
 
-    tb_logger = SummaryWriter('./events/1_to_256')
+    tb_logger = SummaryWriter('./events/0304_new')
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()
