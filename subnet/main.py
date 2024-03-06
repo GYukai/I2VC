@@ -146,13 +146,13 @@ def Var(x):
 
 def save_image_tensor2cv2(input_tensor: torch.Tensor, filename):
     assert (len(input_tensor.shape) == 4 and input_tensor.shape[0] == 1)
-    
+
     input_tensor = input_tensor.to(torch.device('cpu'))
 
     input_tensor = input_tensor.squeeze()
-    
+
     input_tensor = input_tensor.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).type(torch.uint8).numpy()
-    
+
     input_tensor = cv2.cvtColor(input_tensor, cv2.COLOR_RGB2BGR)
     cv2.imwrite(filename, input_tensor)
 
@@ -192,14 +192,14 @@ def testuvg(global_step):
                 psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
                 msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), image1, data_range=1.0,
                                      size_average=True).numpy()
-                
+
                 sumbpp += (bpp_c)
                 sumpsnr += (psnr_c)
                 summsssim += (msssim_c)
-        
+
             log = 'bpp: {:.4f}  psnr: {:.4f} ssim: {:.4f}'.format(sumbpp / cnt, sumpsnr / cnt, summsssim / cnt)
             print(log)
-                
+
 
         log = "global step %d : " % (global_step) + "\n"
         logger.info(log)
@@ -241,12 +241,12 @@ def testkodak(global_step):
             msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
                                     size_average=True).numpy()
             lpips_c = torch.mean(lps_distortion).cpu().detach().numpy()
-            
+
             sumbpp += (bpp_c)
             sumpsnr += (psnr_c)
             summsssim += (msssim_c)
             sumlpips += (lpips_c)
-                
+
         log = "global step %d : " % (global_step) + "\n"
         logger.info(log)
         sumbpp /= cnt
@@ -262,9 +262,9 @@ def train(epoch, global_step):
     print("epoch", epoch)
     global gpu_per_batch
     global optimizer
-    global cur_lr 
-    global net 
-    global scheduler 
+    global cur_lr
+    global net
+    global scheduler
 
     train_loader = DataLoader(dataset=train_dataset, shuffle=True, num_workers=num_workers, batch_size=gpu_per_batch,
                               pin_memory=True)
@@ -272,7 +272,7 @@ def train(epoch, global_step):
 
     net.train()
 
-    
+
     bat_cnt = 0
     cal_cnt = 0
     sumloss = 0
@@ -281,7 +281,7 @@ def train(epoch, global_step):
     sum_lpips = 0
     tot_iter = len(train_loader)
     t0 = datetime.datetime.now()
-    
+
     for batch_idx, input in enumerate(train_loader):
         global_step += 1
         bat_cnt += 1
@@ -290,13 +290,13 @@ def train(epoch, global_step):
         latents = Variable(input[5])
         var_lambda = random.randint(1, 256)
         clipped_recon_bimage, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
-        
+
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
         rd_loss = var_lambda * (distortion + 0.05 * lpips_distortion) + bpp
-        
+
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
-        
+
         def clip_gradient(optimizer, grad_clip):
             for group in optimizer.param_groups:
                 for param in group["params"]:
@@ -312,7 +312,7 @@ def train(epoch, global_step):
                 lpips = lpips_distortion.cpu().detach().numpy()
             else:
                 psnr = 100
-            
+
             loss_ = rd_loss.cpu().detach().numpy()
 
             sumloss += loss_
@@ -329,13 +329,7 @@ def train(epoch, global_step):
             tb_logger.add_scalar('lpips', sum_lpips / cal_cnt, global_step)
             t1 = datetime.datetime.now()
             deltatime = t1 - t0
-            log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,
-                                                                                                   len(train_loader),
-                                                                                                   100. * batch_idx / len(
-                                                                                                       train_loader),
-                                                                                                   sumloss / cal_cnt,
-                                                                                                   cur_lr, 
-                                                                                                   (deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt)
+            log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,len(train_loader),100. * batch_idx / len(train_loader),sumloss / cal_cnt,cur_lr,(deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt)
             print(log)
             log = 'details : psnr : {:.2f} bpp : {:.6f}'.format(sumpsnr / cal_cnt, sumbpp / cal_cnt)
             print(log)
@@ -344,6 +338,9 @@ def train(epoch, global_step):
             cal_cnt = 0
             sumbpp = sumloss = sumpsnr =sum_lpips = 0
             t0 = t1
+
+        if global_step>40000 and global_step % 3000 == 0:
+            save_model(model, global_step)
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
     return global_step
@@ -369,7 +366,7 @@ if __name__ == "__main__":
 
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
-    
+
     model:CAM_net = CAM_net(vae,unet,scheduler)
     print("# of model parameters is: " + str(utility.count_network_parameters(model)))
 
@@ -389,7 +386,7 @@ if __name__ == "__main__":
     # net = torch.nn.DataParallel(net, list(range(gpu_num)))
     bp_parameters = net.parameters()
     optimizer = optim.Adam(bp_parameters, lr=base_lr)
-    
+
     global train_dataset, test_dataset
     if args.testuvg:
         # print('testing UVG')
@@ -410,18 +407,18 @@ if __name__ == "__main__":
     stage_progress = len(stage_progress_4)-1
     lrs = [1e-4, 1e-5]
 
-    
+
 
     for epoch in range(stepoch, tot_epoch):
         for i in range(len(stage_progress_4)):
             if global_step < stage_progress_4[i] - 1:
                 stage_progress = i
-                break 
-        
+                break
+
         log1 = 'Processing training step: {} / 2 '.format(stage_progress+1)
         logger.info(log1)
         cur_lr = lrs[stage_progress]
-            
+
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr = cur_lr)
         if global_step > tot_step:
             save_model(model, global_step)
