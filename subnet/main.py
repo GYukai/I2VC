@@ -231,7 +231,7 @@ def testkodak(global_step):
             latents = torch.randn(latents_shape, dtype=latents_dtype)
             latents = Var(latents * sigma)
 
-            clipped_recon_image, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
+            clipped_recon_image, distortion, lps_distortion, bpp, _ = net(frame, latents, train_lambda_tensor, 2048)
             recon_path = "./fullpreformance/kodak_recon/"
             img_name = 'kodim' + str(num+1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
             save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path, img_name))
@@ -279,6 +279,7 @@ def train(epoch, global_step):
     sumpsnr = 0
     sumbpp = 0
     sum_lpips = 0
+    sum_feature = 0
     tot_iter = len(train_loader)
     t0 = datetime.datetime.now()
 
@@ -289,10 +290,10 @@ def train(epoch, global_step):
         quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
         latents = Variable(input[5])
         var_lambda = random.randint(1, 256)
-        clipped_recon_bimage, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
+        clipped_recon_bimage, distortion, lpips_distortion, bpp, feature_loss = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
 
-        distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-        rd_loss = var_lambda * (distortion + 0.05 * lpips_distortion) + bpp
+        distortion, bpp, lpips_distortion,feature_loss = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion), torch.mean(feature_loss)
+        rd_loss = var_lambda * (distortion + 0.05 * lpips_distortion+0.12 * feature_loss) + bpp
 
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
@@ -310,6 +311,7 @@ def train(epoch, global_step):
             if distortion > 0:
                 psnr = 10 * (torch.log(1 * 1 / distortion) / np.log(10)).cpu().detach().numpy()
                 lpips = lpips_distortion.cpu().detach().numpy()
+                feature = feature_loss.cpu().detach().numpy()
             else:
                 psnr = 100
 
@@ -319,6 +321,7 @@ def train(epoch, global_step):
             sumpsnr += psnr
             sumbpp += bpp.cpu().detach()
             sum_lpips += lpips
+            sum_feature += feature
 
 
         if (batch_idx % print_step) == 0 and bat_cnt > 1:
@@ -327,6 +330,7 @@ def train(epoch, global_step):
             tb_logger.add_scalar('psnr', sumpsnr / cal_cnt, global_step)
             tb_logger.add_scalar('bpp', sumbpp / cal_cnt, global_step)
             tb_logger.add_scalar('lpips', sum_lpips / cal_cnt, global_step)
+            tb_logger.add_scalar('feature_loss',sum_feature/cal_cnt, global_step)
             t1 = datetime.datetime.now()
             deltatime = t1 - t0
             log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,len(train_loader),100. * batch_idx / len(train_loader),sumloss / cal_cnt,cur_lr,(deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt)
@@ -336,7 +340,7 @@ def train(epoch, global_step):
             print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}")
             bat_cnt = 0
             cal_cnt = 0
-            sumbpp = sumloss = sumpsnr =sum_lpips = 0
+            sumbpp = sumloss = sumpsnr =sum_lpips = sum_feature = 0
             t0 = t1
 
         if global_step>40000 and global_step % 3000 == 0:
@@ -397,7 +401,7 @@ if __name__ == "__main__":
         testkodak(global_step)
         exit(0)
 
-    tb_logger = SummaryWriter('./events/0304_new')
+    tb_logger = SummaryWriter('./events/with_feature_loss')
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()
@@ -424,11 +428,7 @@ if __name__ == "__main__":
             save_model(model, global_step)
             print("Finish training")
             break
-        try:
-            global_step = train(epoch, global_step)
-        except KeyboardInterrupt:
-            save_model(model, global_step)
-            break
+        global_step = train(epoch, global_step)
         save_model(model, global_step)
 
         if global_step > 80765*3:
