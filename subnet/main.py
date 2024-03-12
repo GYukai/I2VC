@@ -349,6 +349,9 @@ def train(epoch, global_step):
 
 
 if __name__ == "__main__":
+    tb_logger = SummaryWriter('./events/lps0.03FT')
+
+
     args = parser.parse_args()
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s] %(message)s')
@@ -399,7 +402,6 @@ if __name__ == "__main__":
         testkodak(global_step)
         exit(0)
 
-    tb_logger = SummaryWriter('./events/with_feature_loss')
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()
