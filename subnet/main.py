@@ -341,7 +341,7 @@ def train(epoch, global_step):
             sumbpp = sumloss = sumpsnr =sum_lpips = sum_feature = 0
             t0 = t1
 
-        if global_step>40000 and global_step % 3000 == 0:
+        if global_step>40000 and global_step % 2000 == 0:
             save_model(model, global_step)
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
