@@ -409,7 +409,7 @@ if __name__ == "__main__":
 
     stage_progress_4 = [80765*7, 80765*8]
     stage_progress = len(stage_progress_4)-1
-    lrs = [1e-4, 1e-5]
+    lrs = [1e-5, 1e-5]
 
 
 
