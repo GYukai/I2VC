@@ -289,7 +289,7 @@ def train(epoch, global_step):
         image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
         quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
         latents = Variable(input[5])
-        var_lambda = 1
+        var_lambda = 512
         clipped_recon_bimage,_, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
@@ -341,7 +341,7 @@ def train(epoch, global_step):
             sumbpp = sumloss = sumpsnr =sum_lpips = sum_feature = 0
             t0 = t1
 
-        if global_step>40000 and global_step % 2000 == 0:
+        if global_step % 2000 == 0:
             save_model(model, global_step)
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
@@ -349,7 +349,7 @@ def train(epoch, global_step):
 
 
 if __name__ == "__main__":
-    tb_logger = SummaryWriter('./events/lps0.03FT')
+    tb_logger = SummaryWriter('./events/lps0.03FT_512lmd')
 
 
     args = parser.parse_args()
