@@ -293,7 +293,7 @@ def train(epoch, global_step):
         clipped_recon_bimage,_, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-        rd_loss = var_lambda * (distortion + 0.05 * lpips_distortion) + bpp
+        rd_loss = var_lambda * (distortion + 0.005 * lpips_distortion) + bpp
 
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
@@ -349,7 +349,7 @@ def train(epoch, global_step):
 
 
 if __name__ == "__main__":
-    tb_logger = SummaryWriter('./events/lps0.03FT_512lmd')
+    tb_logger = SummaryWriter('./events/lps0.03FT_512lmd_with_0.005lps_loss')
 
 
     args = parser.parse_args()
