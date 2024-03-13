@@ -257,6 +257,11 @@ def testkodak(global_step):
             sumbpp, sumpsnr, summsssim, sumlpips)
         logger.info(log)
         kodakdrawplt([sumbpp], [sumpsnr], [sumlpips], global_step, testfull=True)
+        if not args.testuvg:
+            tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
+            tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
+            tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
+            tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
 
 def train(epoch, global_step):
     print("epoch", epoch)
@@ -343,6 +348,7 @@ def train(epoch, global_step):
 
         if global_step % 2000 == 0:
             save_model(model, global_step)
+            testkodak(global_step)
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
     return global_step
