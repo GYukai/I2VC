@@ -211,7 +211,7 @@ def testuvg(global_step):
         logger.info(log)
         uvgdrawplt([sumbpp], [sumpsnr], [summsssim], global_step, testfull=True)
 
-def testkodak(global_step):
+def test(test_dataset_I, global_step):
     test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
     net.cuda().eval()
     with torch.no_grad():
@@ -348,7 +348,7 @@ def train(epoch, global_step):
 
         if global_step % 2000 == 0:
             save_model(model, global_step)
-            testkodak(global_step)
+            test(global_step, KodakDataSet())
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
     return global_step
@@ -405,7 +405,7 @@ if __name__ == "__main__":
         # testuvg(global_step)
         print('testing Kodak')
         test_dataset_I = KodakDataSet()
-        testkodak(global_step)
+        test(global_step, test_dataset_I)
         exit(0)
 
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
@@ -439,4 +439,4 @@ if __name__ == "__main__":
 
         if global_step > 80765*3:
             # testuvg(global_step)
-            testkodak(global_step)
+            test(global_step, KodakDataSet())

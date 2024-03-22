@@ -1,4 +1,8 @@
 import os
+
+import glob
+from contextlib import contextmanager
+
 import torch
 import logging
 #import cv2
@@ -22,6 +26,12 @@ out_channel_N = 192
 out_channel_M = 192
 middle_channel = 7
 
+def read_png(path):
+    input_image = (imageio.imread(path).transpose(2, 0, 1)).astype(np.float32) / 255.0
+    h = (input_image.shape[1] // 64) * 64
+    w = (input_image.shape[2] // 64) * 64
+    input_images = np.array(input_image[:, :h, :w])
+    return input_images
 def CalcuPSNR(target, ref):
     diff = ref - target
     diff = diff.flatten('C')
@@ -89,26 +99,121 @@ class UVGDataSet_I(data.Dataset):
 
         return input_images
 
+
 class KodakDataSet(data.Dataset):
     def __init__(self, root="./data/Kodak24/"):
         cnt = 24
         self.inputpath = []
         for i in range(cnt):
-            self.inputpath.append(os.path.join(root, 'kodim'+str((i + 1)).zfill(2)+'.png'))
-    
+            self.inputpath.append(os.path.join(root, 'kodim' + str((i + 1)).zfill(2) + '.png'))
+        self.name = "Kodak24"
+
     def __len__(self):
         return len(self.inputpath)
 
     def __getitem__(self, index):
         input_images = []
         filename = self.inputpath[index]
-        input_image = (imageio.imread(filename).transpose(2, 0, 1)).astype(np.float32) / 255.0
-        h = (input_image.shape[1] // 64) * 64
-        w = (input_image.shape[2] // 64) * 64
-        input_images = np.array(input_image[:, :h, :w])
+        return read_png(filename)
 
-        return input_images
 
+class EvalDataset:
+    def __init__(self, original_data_folder):
+        self.original_data_folder = original_data_folder
+        self.target_data_folder = None
+        self.rel_images = self.get_images_rel_path()
+        self.abs_images = self.get_abs_images(original_data_folder)
+        self.out_abs_images = None
+
+    def set_target_folder(self, target_data_folder):
+        self.target_data_folder = target_data_folder
+        self.out_abs_images = self.get_abs_images(target_data_folder)
+
+    def __len__(self):
+        return len(self.rel_images)
+
+    def __getitem__(self, idx):
+        return read_png(self.abs_images[idx]), self.out_abs_images[idx]
+
+    def get_images_rel_path(self):
+        pass
+
+    def get_abs_images(self, root_folder):
+        pass
+
+
+class KodakForEval(EvalDataset):
+    def __init__(self, original_data_folder):
+        self.content_folder = "."
+        super().__init__(original_data_folder)
+
+    def get_images_rel_path(self):
+        image_folder = os.path.join(self.original_data_folder, self.content_folder)
+        pattern = '**/*.png'
+        with temporary_change_dir(image_folder):
+            images = glob.glob(os.path.join(pattern), recursive=True)
+        filtered_files = sorted([f for f in images])
+        return filtered_files
+
+    def get_abs_images(self, root_folder):
+        return [os.path.join(root_folder, self.content_folder, f) for f in self.rel_images]
+
+class UVGDataset(EvalDataset):
+    def __init__(self, original_data_folder):
+        self.content_folder = "images32"
+        super().__init__(original_data_folder)
+
+    def get_images_rel_path(self):
+        image_folder = os.path.join(self.original_data_folder, self.content_folder)
+        pattern = '**/im0[0-3][0-9].png'
+        with temporary_change_dir(image_folder):
+            images = glob.glob(os.path.join(pattern), recursive=True)
+        filtered_files = sorted([f for f in images if int(f[-7:-4]) <= 32])
+        return filtered_files
+
+    def get_abs_images(self, root_folder):
+        return [os.path.join(root_folder, self.content_folder, f) for f in self.rel_images]
+
+class DIV2KDataset(EvalDataset):
+    def __init__(self, original_data_folder):
+        self.content_folder = "."
+        super().__init__(original_data_folder)
+
+    def get_images_rel_path(self):
+        image_folder = os.path.join(self.original_data_folder, self.content_folder)
+        pattern = '**/*.png'
+        with temporary_change_dir(image_folder):
+            images = glob.glob(os.path.join(pattern), recursive=True)
+        rel_images = sorted([f for f in images])
+        return rel_images
+
+    def get_abs_images(self, root_folder):
+        return [os.path.join(root_folder, self.content_folder, f) for f in self.rel_images]
+class HEVCDataset(EvalDataset):
+    def __init__(self, original_data_folder):
+        self.content_folder = "images32"
+        super().__init__(original_data_folder)
+
+    def get_images_rel_path(self):
+        image_folder = os.path.join(self.original_data_folder, self.content_folder)
+        pattern = '**/im0[0-3][0-9].png'
+        with temporary_change_dir(image_folder):
+            images = glob.glob(os.path.join(pattern), recursive=True)
+        filtered_files = sorted([f for f in images if int(f[-7:-4]) <= 32])
+        return filtered_files
+
+    def get_abs_images(self, root_folder):
+        return [os.path.join(root_folder, self.content_folder, f) for f in self.rel_images]
+
+@contextmanager
+def temporary_change_dir(new_directory):
+    """临时改变工作目录的上下文管理器。"""
+    original_directory = os.getcwd()  # 保存原始目录
+    try:
+        os.chdir(new_directory)  # 改变到新目录
+        yield
+    finally:
+        os.chdir(original_directory)  # 恢复到原始目录
 
 class DataSet(data.Dataset):
     def __init__(self, latents_dtype, sigma, path="../../data/vimeo_septuplet/test.txt", im_height=256, im_width=256):
