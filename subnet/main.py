@@ -211,7 +211,7 @@ def testuvg(global_step):
         logger.info(log)
         uvgdrawplt([sumbpp], [sumpsnr], [summsssim], global_step, testfull=True)
 
-def test(test_dataset_I, global_step):
+def test(global_step,test_dataset_I):
     test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
     net.cuda().eval()
     with torch.no_grad():
