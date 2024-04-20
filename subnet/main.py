@@ -106,7 +106,8 @@ parser.add_argument('--allpick', action='store_true')
 parser.add_argument('--config', dest='config', required=True,
                     help='hyperparameter of Reid in json format')
 parser.add_argument('--from_scratch', default=False, action='store_true')
-
+parser.add_argument('--mse_loss-factor', type=float, default=1.0)
+parser.add_argument('--lps_loss-factor', type=float, default=1.0)
 
 def parse_config(config):
     config = json.load(open(args.config))
@@ -270,6 +271,7 @@ def train(epoch, global_step):
     global cur_lr
     global net
     global scheduler
+    global args
 
     train_loader = DataLoader(dataset=train_dataset, shuffle=True, num_workers=num_workers, batch_size=gpu_per_batch,
                               pin_memory=True)
@@ -298,7 +300,7 @@ def train(epoch, global_step):
         clipped_recon_bimage,_, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-        rd_loss = var_lambda * (distortion) + bpp
+        rd_loss = var_lambda * (args.mse_loss_factor*distortion + args.lps_loss_factor*lpips_distortion) + bpp
 
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
@@ -357,7 +359,7 @@ def train(epoch, global_step):
 if __name__ == "__main__":
     tb_logger = SummaryWriter('./events/mse_only')
 
-
+    global args
     args = parser.parse_args()
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s] %(message)s')
