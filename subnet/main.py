@@ -40,7 +40,7 @@ print_step = 100
 cal_step = 10
 # print_step = 10
 warmup_step = 0  # // gpu_num
-gpu_per_batch = 2
+gpu_per_batch = 1
 test_step = 10000  # // gpu_num
 tot_epoch = 100
 tot_step = 3000000
@@ -340,13 +340,13 @@ def train(epoch, global_step):
             print(log)
             log = 'details : psnr : {:.2f} bpp : {:.6f}'.format(sumpsnr / cal_cnt, sumbpp / cal_cnt)
             print(log)
-            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}")
+            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, rd_loss:{rd_loss}")
             bat_cnt = 0
             cal_cnt = 0
             sumbpp = sumloss = sumpsnr =sum_lpips = sum_feature = 0
             t0 = t1
 
-        if global_step % 2000 == 0:
+        if global_step % 20000 == 0:
             save_model(model, global_step)
             test(global_step, KodakDataSet())
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
@@ -392,6 +392,7 @@ if __name__ == "__main__":
             print("AUTO LOAD : ", lastest_file)
             print("loading pretrain : ", lastest_file)
             global_step = load_model(model, folder_path + lastest_file)
+            print(f'global_step: {global_step}')
 
     net = model
     # net = torch.nn.DataParallel(net, list(range(gpu_num)))
