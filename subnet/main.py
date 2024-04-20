@@ -108,6 +108,14 @@ parser.add_argument('--config', dest='config', required=True,
 parser.add_argument('--from_scratch', default=False, action='store_true')
 parser.add_argument('--mse_loss-factor', type=float, default=1.0)
 parser.add_argument('--lps_loss-factor', type=float, default=0.05)
+parser.add_argument('--lmd-mode', type=str, choices=['fixed', 'random'], required=True,
+                    help='Mode to set the lmd factor. Choose "fixed" to use a specific value or "random" to generate it randomly within bounds.')
+parser.add_argument('--lmd-fixed_value', type=int, default=256,
+                    help='Fixed value for lmd when mode is "fixed". This argument is required if mode is "fixed".')
+parser.add_argument('--lmd-lower_bound', type=int, default=8,
+                    help='Lower bound for lmd when mode is "random". This argument is required if mode is "random".')
+parser.add_argument('--lmd-upper_bound', type=int, default=256,
+                    help='Upper bound for lmd when mode is "random". This argument is required if mode is "random".')
 
 def parse_config(config):
     config = json.load(open(args.config))
@@ -296,7 +304,10 @@ def train(epoch, global_step):
         image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
         quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
         latents = Variable(input[5])
-        var_lambda = np.random.randint(8, 256)
+        if args.lmd_mode == 'fixed':
+            var_lambda = args.lmd_fixed_value
+        elif args.lmd_mode == 'random':
+            var_lambda = np.random.randint(args.lmd_lower_bound, args.lmd_upper_bound)
         clipped_recon_bimage,_, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
@@ -361,6 +372,8 @@ if __name__ == "__main__":
 
     global args
     args = parser.parse_args()
+    print(f"args: {args}")
+    print("----------")
 
     formatter = logging.Formatter('%(asctime)s - %(levelname)s] %(message)s')
     stdhandler = logging.StreamHandler()
