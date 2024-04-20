@@ -107,7 +107,7 @@ parser.add_argument('--config', dest='config', required=True,
                     help='hyperparameter of Reid in json format')
 parser.add_argument('--from_scratch', default=False, action='store_true')
 parser.add_argument('--mse_loss-factor', type=float, default=1.0)
-parser.add_argument('--lps_loss-factor', type=float, default=1.0)
+parser.add_argument('--lps_loss-factor', type=float, default=0.05)
 
 def parse_config(config):
     config = json.load(open(args.config))
