@@ -342,7 +342,7 @@ def train(epoch, global_step):
             print(log)
             log = 'details : psnr : {:.2f} bpp : {:.6f}'.format(sumpsnr / cal_cnt, sumbpp / cal_cnt)
             print(log)
-            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, rd_loss:{rd_loss}")
+            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, rd_loss:{rd_loss}, mse-factor: {args.mse_loss_factor}, lps-factor: {args.lps_loss_factor}")
             bat_cnt = 0
             cal_cnt = 0
             sumbpp = sumloss = sumpsnr =sum_lpips = sum_feature = 0
