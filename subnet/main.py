@@ -1,38 +1,29 @@
 # -*- coding: utf8 -*-
-import os
 import argparse
-import torch
-import cv2
-import logging
-import numpy as np
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torch.utils.data as data
-from torch.utils.data import DataLoader
-import sys
-import math
-import json
 import datetime
-from pytorch_msssim import ms_ssim
-from dataset import DataSet, UVGDataSet_I, KodakDataSet
-from tensorboardX import SummaryWriter
-from drawuvg import uvgdrawplt
-from drawkodak import kodakdrawplt
-from subnet.src.models.CAM_net import *
-import src.models.utils as utility
-import random
-from diffusers import LDMSuperResolutionPipeline
+import json
+import logging
+import os
+
+import cv2
+import torch.optim as optim
 from accelerate import Accelerator
-from subnet.src.lpips_pytorch import lpips
 from accelerate import DistributedDataParallelKwargs
+from diffusers import LDMSuperResolutionPipeline
+from pytorch_msssim import ms_ssim
+from tensorboardX import SummaryWriter
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
 
-
+import src.models.utils as utility
+from dataset import DataSet, KodakDataSet
+from drawkodak import kodakdrawplt
+from drawuvg import uvgdrawplt
+from subnet.src.models.CAM_net import *
 
 torch.backends.cudnn.enabled = True
 gpu_num = torch.cuda.device_count()
-num_workers = gpu_num*4
+num_workers = gpu_num * 4
 print('gpu_num:', gpu_num)
 cur_lr = base_lr = 0.0001  # * gpu_num
 train_lambda = 2048
@@ -53,9 +44,8 @@ ifarr = 0
 ifout = 0
 recon_path = 'recon/recon.bin'
 
-
 ##################################################################################
-pipe = LDMSuperResolutionPipeline.from_pretrained("CompVis/ldm-super-resolution-4x-openimages", local_files_only = True)
+pipe = LDMSuperResolutionPipeline.from_pretrained("CompVis/ldm-super-resolution-4x-openimages", local_files_only=True)
 scheduler = pipe.scheduler
 sigma = scheduler.init_noise_sigma
 scheduler.set_timesteps(28)
@@ -67,11 +57,15 @@ unet.requires_grad_(False)
 ##################################################################################
 
 once_strings = []
+
+
 def print_once(strings):
     if strings in once_strings:
         return
     print(strings)
     once_strings.append(strings)
+
+
 print_once("=== main ===")
 
 # def geti(lamb):
@@ -109,13 +103,15 @@ parser.add_argument('--from_scratch', default=False, action='store_true')
 parser.add_argument('--mse_loss-factor', type=float, default=1.0)
 parser.add_argument('--lps_loss-factor', type=float, default=0.05)
 parser.add_argument('--lmd-mode', type=str, choices=['fixed', 'random'], required=True,
-                    help='Mode to set the lmd factor. Choose "fixed" to use a specific value or "random" to generate it randomly within bounds.')
+                    help='Mode to set the lmd factor. Choose "fixed" to use a specific value or "random" to generate '
+                         'it randomly within bounds.')
 parser.add_argument('--lmd-fixed_value', type=int, default=256,
                     help='Fixed value for lmd when mode is "fixed". This argument is required if mode is "fixed".')
 parser.add_argument('--lmd-lower_bound', type=int, default=8,
                     help='Lower bound for lmd when mode is "random". This argument is required if mode is "random".')
 parser.add_argument('--lmd-upper_bound', type=int, default=256,
                     help='Upper bound for lmd when mode is "random". This argument is required if mode is "random".')
+
 
 def parse_config(config):
     config = json.load(open(args.config))
@@ -148,6 +144,7 @@ def parse_config(config):
         msssim_lambda = config['msssim_lambda']
     if 'ifout' in config:
         ifout = config['ifout']
+
 
 def Var(x):
     return Variable(x.cuda())
@@ -188,19 +185,20 @@ def testuvg(global_step):
             cnt += seqlen
             # print(seqlen)
 
-            for i in range(0,seqlen):
+            for i in range(0, seqlen):
                 image1 = input_images[:, i, :, :, :]
                 # image2 = input_images[:, i+1, :, :, :]
                 # image3 = input_images[:, i+2, :, :, :]
                 # frame1, frame2, frame3 = Var(image1), Var(image2), Var(image3)
                 frame1 = Var(image1)
 
-                clipped_recon_image, feature_map, distortion, bpp_y, bpp_z, bpp = net(frame1, train_lambda_tensor, train_lambda_tensor_boudary)
+                clipped_recon_image, feature_map, distortion, bpp_y, bpp_z, bpp = net(frame1, train_lambda_tensor,
+                                                                                      train_lambda_tensor_boudary)
 
                 bpp_c = torch.mean(bpp).cpu().detach().numpy()
                 psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
                 msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), image1, data_range=1.0,
-                                     size_average=True).numpy()
+                                   size_average=True).numpy()
 
                 sumbpp += (bpp_c)
                 sumpsnr += (psnr_c)
@@ -208,7 +206,6 @@ def testuvg(global_step):
 
             log = 'bpp: {:.4f}  psnr: {:.4f} ssim: {:.4f}'.format(sumbpp / cnt, sumpsnr / cnt, summsssim / cnt)
             print(log)
-
 
         log = "global step %d : " % (global_step) + "\n"
         logger.info(log)
@@ -220,7 +217,8 @@ def testuvg(global_step):
         logger.info(log)
         uvgdrawplt([sumbpp], [sumpsnr], [summsssim], global_step, testfull=True)
 
-def test(global_step,test_dataset_I):
+
+def test(global_step, test_dataset_I):
     test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
     net.cuda().eval()
     with torch.no_grad():
@@ -240,15 +238,15 @@ def test(global_step,test_dataset_I):
             latents = torch.randn(latents_shape, dtype=latents_dtype)
             latents = Var(latents * sigma)
 
-            clipped_recon_image,_, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
+            clipped_recon_image, _, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
             recon_path = "./fullpreformance/kodak_recon/"
-            img_name = 'kodim' + str(num+1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
+            img_name = 'kodim' + str(num + 1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
             save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path, img_name))
 
             bpp_c = torch.mean(bpp).cpu().detach().numpy()
             psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
             msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
-                                    size_average=True).numpy()
+                               size_average=True).numpy()
             lpips_c = torch.mean(lps_distortion).cpu().detach().numpy()
 
             sumbpp += (bpp_c)
@@ -272,6 +270,7 @@ def test(global_step,test_dataset_I):
             tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
             tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
 
+
 def train(epoch, global_step):
     print("epoch", epoch)
     global gpu_per_batch
@@ -286,7 +285,6 @@ def train(epoch, global_step):
     train_loader, net, optimizer, scheduler = accelerator.prepare(train_loader, net, optimizer, scheduler)
 
     net.train()
-
 
     bat_cnt = 0
     cal_cnt = 0
@@ -308,10 +306,16 @@ def train(epoch, global_step):
             var_lambda = args.lmd_fixed_value
         elif args.lmd_mode == 'random':
             var_lambda = np.random.randint(args.lmd_lower_bound, args.lmd_upper_bound)
-        clipped_recon_bimage,_, distortion, lpips_distortion, bpp = net(input_image = image2, latents = latents, lmd=var_lambda, lmd_boundary=2048, previous_frame = None, feature_frame=None, quant_noise_feature=quant_noise_feature, quant_noise_z=quant_noise_z)
+        else:
+            raise ValueError(f"Invalid lambda mode: {args.lmd_mode}")
+        clipped_recon_bimage, _, distortion, lpips_distortion, bpp = net(input_image=image2, latents=latents,
+                                                                         lmd=var_lambda, lmd_boundary=2048,
+                                                                         previous_frame=None, feature_frame=None,
+                                                                         quant_noise_feature=quant_noise_feature,
+                                                                         quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-        rd_loss = var_lambda * (args.mse_loss_factor*distortion + args.lps_loss_factor*lpips_distortion) + bpp
+        rd_loss = var_lambda * (args.mse_loss_factor * distortion + args.lps_loss_factor * lpips_distortion) + bpp
 
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
@@ -321,6 +325,7 @@ def train(epoch, global_step):
                 for param in group["params"]:
                     if param.grad is not None:
                         param.grad.data.clamp_(-grad_clip, grad_clip)
+
         clip_gradient(optimizer, 0.5)
         optimizer.step()
 
@@ -339,24 +344,30 @@ def train(epoch, global_step):
             sumbpp += bpp.cpu().detach()
             sum_lpips += lpips
 
-
         if (batch_idx % print_step) == 0 and bat_cnt > 1:
             tb_logger.add_scalar('lr', cur_lr, global_step)
             tb_logger.add_scalar('rd_loss', sumloss / cal_cnt, global_step)
             tb_logger.add_scalar('psnr', sumpsnr / cal_cnt, global_step)
             tb_logger.add_scalar('bpp', sumbpp / cal_cnt, global_step)
             tb_logger.add_scalar('lpips', sum_lpips / cal_cnt, global_step)
-            tb_logger.add_scalar('feature_loss',sum_feature/cal_cnt, global_step)
+            tb_logger.add_scalar('feature_loss', sum_feature / cal_cnt, global_step)
             t1 = datetime.datetime.now()
             deltatime = t1 - t0
-            log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,len(train_loader),100. * batch_idx / len(train_loader),sumloss / cal_cnt,cur_lr,(deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt)
+            log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,
+                                                                                                   len(train_loader),
+                                                                                                   100. * batch_idx / len(
+                                                                                                       train_loader),
+                                                                                                   sumloss / cal_cnt,
+                                                                                                   cur_lr, (
+                                                                                                               deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt)
             print(log)
             log = 'details : psnr : {:.2f} bpp : {:.6f}'.format(sumpsnr / cal_cnt, sumbpp / cal_cnt)
             print(log)
-            print(f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, rd_loss:{rd_loss}, mse-factor: {args.mse_loss_factor}, lps-factor: {args.lps_loss_factor}")
+            print(
+                f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, rd_loss:{rd_loss}, mse-factor: {args.mse_loss_factor}, lps-factor: {args.lps_loss_factor}")
             bat_cnt = 0
             cal_cnt = 0
-            sumbpp = sumloss = sumpsnr =sum_lpips = sum_feature = 0
+            sumbpp = sumloss = sumpsnr = sum_lpips = sum_feature = 0
             t0 = t1
 
         if global_step % 20000 == 0:
@@ -393,7 +404,7 @@ if __name__ == "__main__":
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
 
-    model:CAM_net = CAM_net(vae,unet,scheduler)
+    model: CAM_net = CAM_net(vae, unet, scheduler)
     print("# of model parameters is: " + str(utility.count_network_parameters(model)))
 
     if not args.from_scratch:
@@ -427,13 +438,11 @@ if __name__ == "__main__":
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
     test_dataset_I = KodakDataSet()
-    stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch* gpu_num))  # * gpu_num))
+    stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch * gpu_num))  # * gpu_num))
 
-    stage_progress_4 = [80765*7, 80765*8]
-    stage_progress = len(stage_progress_4)-1
+    stage_progress_4 = [80765 * 7, 80765 * 8]
+    stage_progress = len(stage_progress_4) - 1
     lrs = [1e-5, 1e-5]
-
-
 
     for epoch in range(stepoch, tot_epoch):
         for i in range(len(stage_progress_4)):
@@ -441,11 +450,11 @@ if __name__ == "__main__":
                 stage_progress = i
                 break
 
-        log1 = 'Processing training step: {} / 2 '.format(stage_progress+1)
+        log1 = 'Processing training step: {} / 2 '.format(stage_progress + 1)
         logger.info(log1)
         cur_lr = lrs[stage_progress]
 
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr = cur_lr)
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cur_lr)
         if global_step > tot_step:
             save_model(model, global_step)
             print("Finish training")
@@ -453,6 +462,6 @@ if __name__ == "__main__":
         global_step = train(epoch, global_step)
         save_model(model, global_step)
 
-        if global_step > 80765*3:
+        if global_step > 80765 * 3:
             # testuvg(global_step)
             test(global_step, KodakDataSet())
