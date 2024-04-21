@@ -21,6 +21,8 @@ from drawkodak import kodakdrawplt
 from drawuvg import uvgdrawplt
 from subnet.src.models.CAM_net import *
 
+from subnet.dis_eva.dis_eva import calc_dis
+
 torch.backends.cudnn.enabled = True
 gpu_num = torch.cuda.device_count()
 num_workers = gpu_num * 4
@@ -227,6 +229,8 @@ def test(global_step, test_dataset_I):
         sumpsnr = 0
         summsssim = 0
         sumlpips = 0
+        sumdis = 0
+
         train_lambda_tensor = torch.tensor(train_lambda)
         cnt = test_loader.__len__()
         print(cnt)
@@ -249,11 +253,13 @@ def test(global_step, test_dataset_I):
             msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
                                size_average=True).numpy()
             lpips_c = torch.mean(lps_distortion).cpu().detach().numpy()
+            dis = calc_dis(input, clipped_recon_image)
 
             sumbpp += (bpp_c)
             sumpsnr += (psnr_c)
             summsssim += (msssim_c)
             sumlpips += (lpips_c)
+            sumdis += dis
 
         log = "global step %d : " % (global_step) + "\n"
         logger.info(log)
@@ -261,8 +267,8 @@ def test(global_step, test_dataset_I):
         sumpsnr /= cnt
         summsssim /= cnt
         sumlpips /= cnt
-        log = "Kodakdataset : average bpp : %.6lf, average psnr : %.6lf, average msssim: %.6lf\n, average lpips: %.6lf\n" % (
-            sumbpp, sumpsnr, summsssim, sumlpips)
+        log = f"Kodakdataset : average bpp : {sumbpp:.6lf}, average psnr : {sumpsnr:.6lf}, average msssim: {summsssim:.6lf}\n, average lpips: {sumlpips:.6lf}, averageDIS: {sumdis:.6lf}\n"
+
         logger.info(log)
         kodakdrawplt([sumbpp], [sumpsnr], [sumlpips], global_step, testfull=True)
         if not args.testuvg:
@@ -270,6 +276,7 @@ def test(global_step, test_dataset_I):
             tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
             tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
             tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
+            tb_logger.add_scalar('kodak_dis', sumdis, global_step)
 
 
 def train(epoch, global_step):
