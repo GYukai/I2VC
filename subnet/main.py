@@ -111,6 +111,7 @@ parser.add_argument('--lmd-lower_bound', type=int, default=8,
                     help='Lower bound for lmd when mode is "random". This argument is required if mode is "random".')
 parser.add_argument('--lmd-upper_bound', type=int, default=256,
                     help='Upper bound for lmd when mode is "random". This argument is required if mode is "random".')
+parser.add_argument('--test-interval', type=int, default=2000)
 
 
 def parse_config(config):
@@ -370,7 +371,7 @@ def train(epoch, global_step):
             sumbpp = sumloss = sumpsnr = sum_lpips = sum_feature = 0
             t0 = t1
 
-        if global_step % 20000 == 0:
+        if global_step % args.test_interval == 0:
             save_model(model, global_step)
             test(global_step, KodakDataSet())
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
