@@ -414,7 +414,7 @@ if __name__ == "__main__":
             global_step = load_model(model, args.pretrain)
         else:
             folder_path = "./snapshot/"
-            files = os.listdir(folder_path)
+            files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
             lastest_file = max(files, key=lambda x: os.path.getctime(folder_path + x))
             print("AUTO LOAD : ", lastest_file)
             print("loading pretrain : ", lastest_file)
