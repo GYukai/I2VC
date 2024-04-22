@@ -115,6 +115,7 @@ parser.add_argument('--lmd-upper_bound', type=int, default=256,
                     help='Upper bound for lmd when mode is "random". This argument is required if mode is "random".')
 parser.add_argument('--test-interval', type=int, default=2000)
 parser.add_argument('--exp-name', type=str, default='exp')
+parser.add_argument('--batch-per-gpu', type=int, default=2)
 
 
 def parse_config(config):
@@ -395,7 +396,7 @@ if __name__ == "__main__":
     global args
     args = parser.parse_args()
     tb_logger = SummaryWriter(f'./events/{args.exp_name}')
-
+    gpu_per_batch = args.batch_per_gpu
     print(f"args: {args}")
     print("----------")
 
