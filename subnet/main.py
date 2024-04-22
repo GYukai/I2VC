@@ -114,6 +114,7 @@ parser.add_argument('--lmd-lower_bound', type=int, default=8,
 parser.add_argument('--lmd-upper_bound', type=int, default=256,
                     help='Upper bound for lmd when mode is "random". This argument is required if mode is "random".')
 parser.add_argument('--test-interval', type=int, default=2000)
+parser.add_argument('--exp-name', type=str, default='exp')
 
 
 def parse_config(config):
@@ -390,10 +391,11 @@ def train(epoch, global_step):
 
 
 if __name__ == "__main__":
-    tb_logger = SummaryWriter('./events/mse_only')
 
     global args
     args = parser.parse_args()
+    tb_logger = SummaryWriter(f'./events/{args.exp_name}')
+
     print(f"args: {args}")
     print("----------")
 
