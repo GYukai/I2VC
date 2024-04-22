@@ -221,62 +221,65 @@ def testuvg(global_step):
         uvgdrawplt([sumbpp], [sumpsnr], [summsssim], global_step, testfull=True)
 
 
+
 def test(global_step, test_dataset_I):
-    test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
-    net.cuda().eval()
-    with torch.no_grad():
-        sumbpp = 0
-        sumpsnr = 0
-        summsssim = 0
-        sumlpips = 0
-        sumdis = 0
+    if accelerator.is_main_process:
+        test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
+        net.cuda().eval()
+        with torch.no_grad():
+            sumbpp = 0
+            sumpsnr = 0
+            summsssim = 0
+            sumlpips = 0
+            sumdis = 0
 
-        train_lambda_tensor = torch.tensor(train_lambda)
-        cnt = test_loader.__len__()
-        print(cnt)
+            train_lambda_tensor = torch.tensor(train_lambda)
+            cnt = test_loader.__len__()
+            print(cnt)
 
-        for num, input in enumerate(test_loader):
-            frame = Var(input)
-            height, width = frame.shape[-2:]
+            for num, input in enumerate(test_loader):
+                frame = Var(input)
+                height, width = frame.shape[-2:]
 
-            latents_shape = (1, 3, height // 4, width // 4)
-            latents = torch.randn(latents_shape, dtype=latents_dtype)
-            latents = Var(latents * sigma)
+                latents_shape = (1, 3, height // 4, width // 4)
+                latents = torch.randn(latents_shape, dtype=latents_dtype)
+                latents = Var(latents * sigma)
 
-            clipped_recon_image, _, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
-            recon_path = "./fullpreformance/kodak_recon/"
-            img_name = 'kodim' + str(num + 1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
-            save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path, img_name))
+                clipped_recon_image, _, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
+                recon_path = "./fullpreformance/kodak_recon/"
+                img_name = 'kodim' + str(num + 1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
+                save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path, img_name))
 
-            bpp_c = torch.mean(bpp).cpu().detach().numpy()
-            psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
-            msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
-                               size_average=True).numpy()
-            lpips_c = torch.mean(lps_distortion).cpu().detach().numpy()
-            dis = calc_dis(input, clipped_recon_image)
+                bpp_c = torch.mean(bpp).cpu().detach().numpy()
+                psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
+                msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
+                                   size_average=True).numpy()
+                lpips_c = torch.mean(lps_distortion).cpu().detach().numpy()
+                dis = calc_dis(frame, clipped_recon_image)
 
-            sumbpp += (bpp_c)
-            sumpsnr += (psnr_c)
-            summsssim += (msssim_c)
-            sumlpips += (lpips_c)
-            sumdis += dis
+                sumbpp += (bpp_c)
+                sumpsnr += (psnr_c)
+                summsssim += (msssim_c)
+                sumlpips += (lpips_c)
+                sumdis += (dis)
 
-        log = "global step %d : " % (global_step) + "\n"
-        logger.info(log)
-        sumbpp /= cnt
-        sumpsnr /= cnt
-        summsssim /= cnt
-        sumlpips /= cnt
-        log = f"Kodakdataset : average bpp : {sumbpp:.6lf}, average psnr : {sumpsnr:.6lf}, average msssim: {summsssim:.6lf}\n, average lpips: {sumlpips:.6lf}, averageDIS: {sumdis:.6lf}\n"
+            log = "global step %d : " % (global_step) + "\n"
+            logger.info(log)
+            sumbpp /= cnt
+            sumpsnr /= cnt
+            summsssim /= cnt
+            sumlpips /= cnt
+            sumdis /= cnt
+            log = f"Kodakdataset : average bpp : {sumbpp:.6f}, average psnr : {sumpsnr:.6f}, average msssim: {summsssim:.6f}\n, average lpips: {sumlpips:.6f}, average DIS: {sumdis:.6f}\n"
 
-        logger.info(log)
-        kodakdrawplt([sumbpp], [sumpsnr], [sumlpips], global_step, testfull=True)
-        if not args.testuvg:
-            tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
-            tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
-            tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
-            tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
-            tb_logger.add_scalar('kodak_dis', sumdis, global_step)
+            logger.info(log)
+            kodakdrawplt([sumbpp], [sumpsnr], [sumlpips], global_step, testfull=True)
+            if not args.testuvg:
+                tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
+                tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
+                tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
+                tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
+                tb_logger.add_scalar('kodak_dis', sumdis, global_step)
 
 
 def train(epoch, global_step):

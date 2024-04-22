@@ -3,11 +3,10 @@ from PIL import Image
 from .DISTS_pt import prepare_image, DISTS
 import torch
 
-device = "cuda"
+device = "cuda:0"
 test_for_dis = DISTS().to(device)
 def calc_dis(gt, recon):
-
-    dis = test_for_dis(gt, recon).item()
+    dis = test_for_dis(gt.to(device), recon.to(device)).item()
     return dis
 
 # UVG = ["Beauty", "Bosphorus", "HoneyBee", "Jockey", "ReadySteadyGo", "ShakeNDry", "YachtRide"]
