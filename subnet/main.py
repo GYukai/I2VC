@@ -33,7 +33,7 @@ print_step = 100
 cal_step = 10
 # print_step = 10
 warmup_step = 0  # // gpu_num
-gpu_per_batch = 1
+
 test_step = 10000  # // gpu_num
 tot_epoch = 100
 tot_step = 3000000
@@ -328,7 +328,10 @@ def train(epoch, global_step):
                                                                          quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-        rd_loss = var_lambda * (args.mse_loss_factor * distortion + args.lps_loss_factor * lpips_distortion) + bpp
+        if epoch==0:
+            rd_loss = distortion
+        else:
+            rd_loss = var_lambda * (lpips_distortion) + bpp
 
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
