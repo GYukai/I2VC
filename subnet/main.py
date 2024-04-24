@@ -116,6 +116,7 @@ parser.add_argument('--lmd-upper_bound', type=int, default=256,
 parser.add_argument('--test-interval', type=int, default=2000)
 parser.add_argument('--exp-name', type=str, default='exp')
 parser.add_argument('--batch-per-gpu', type=int, default=2)
+parser.add_argument('--test-path', type=str, default='data/Kodak24/kodak')
 
 
 def parse_config(config):
@@ -388,7 +389,7 @@ def train(epoch, global_step):
 
         if global_step % args.test_interval == 0:
             save_model(model, global_step)
-            test(global_step, KodakDataSet())
+            test(global_step, KodakDataSet(args.test_path))
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
     return global_step
@@ -448,13 +449,13 @@ if __name__ == "__main__":
         # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
         # testuvg(global_step)
         print('testing Kodak')
-        test_dataset_I = KodakDataSet()
+        test_dataset_I = KodakDataSet(args.test_path)
         test(global_step, test_dataset_I)
         exit(0)
 
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
-    test_dataset_I = KodakDataSet()
+    test_dataset_I = KodakDataSet(args.test_path)
     stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch * gpu_num))  # * gpu_num))
 
     stage_progress_4 = [80765 * 7, 80765 * 8]
@@ -481,4 +482,4 @@ if __name__ == "__main__":
 
         if global_step > 80765 * 3:
             # testuvg(global_step)
-            test(global_step, KodakDataSet())
+            test(global_step, KodakDataSet(args.test_path))
