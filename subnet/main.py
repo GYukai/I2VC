@@ -329,10 +329,8 @@ def train(epoch, global_step):
                                                                          quant_noise_z=quant_noise_z)
 
         distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-        if epoch==0:
-            rd_loss = distortion
-        else:
-            rd_loss = var_lambda * (lpips_distortion) + bpp
+        dis_loss = calc_dis(image2, clipped_recon_bimage)
+        rd_loss = var_lambda * (args.mse_loss_factor * distortion + args.lps_loss_factor * lpips_distortion) + bpp
 
         optimizer.zero_grad()
         accelerator.backward(rd_loss)
