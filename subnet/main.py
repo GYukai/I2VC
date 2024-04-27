@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 
 import src.models.utils as utility
 from dataset import DataSet, KodakDataSet
-from drawkodak import kodakdrawplt
+from drawkodak import kodakdrawplt, drawplt
 from drawuvg import uvgdrawplt
 from subnet.src.models.CAM_net import *
 
@@ -276,7 +276,7 @@ def test(global_step, test_dataset_I):
             log = f"Kodakdataset : average bpp : {sumbpp:.6f}, average psnr : {sumpsnr:.6f}, average msssim: {summsssim:.6f}\n, average lpips: {sumlpips:.6f}, average DIS: {sumdis:.6f}\n"
 
             logger.info(log)
-            kodakdrawplt([sumbpp], [sumpsnr], [sumlpips], global_step, testfull=True)
+            drawplt(bpp=[sumbpp], lpips=[sumlpips], psnr=[sumpsnr], disit=[sumdis])
             if not args.testuvg:
                 tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
                 tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
