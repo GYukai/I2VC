@@ -227,6 +227,9 @@ def testuvg(global_step):
 
 
 def test(global_step, test_dataset_I):
+    '''
+    Test one model to one test dataset
+    '''
     if accelerator.is_main_process:
         test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
         net.cuda().eval()
