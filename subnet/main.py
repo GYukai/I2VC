@@ -104,7 +104,7 @@ parser.add_argument('--config', dest='config', required=True,
 parser.add_argument('--from_scratch', default=False, action='store_true')
 parser.add_argument('--mse_loss-factor', type=float, default=1.0)
 parser.add_argument('--lps_loss-factor', type=float, default=0.05)
-parser.add_argument('--lmd-mode', type=str, choices=['fixed', 'random'], required=True,
+parser.add_argument('--lmd-mode', type=str, choices=['fixed', 'random'], default="fixed",
                     help='Mode to set the lmd factor. Choose "fixed" to use a specific value or "random" to generate '
                          'it randomly within bounds.')
 parser.add_argument('--lmd-fixed_value', type=int, default=256,
