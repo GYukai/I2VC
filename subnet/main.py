@@ -117,6 +117,7 @@ parser.add_argument('--test-interval', type=int, default=2000)
 parser.add_argument('--exp-name', type=str, default='exp')
 parser.add_argument('--batch-per-gpu', type=int, default=2)
 parser.add_argument('--test-path', type=str, default='data/Kodak24/kodak')
+parser.add_argument('--test-lmd', type=int, default=256)
 
 
 def parse_config(config):
@@ -237,6 +238,7 @@ def test(global_step, test_dataset_I):
             sumdis = 0
 
             train_lambda_tensor = torch.tensor(train_lambda)
+            print(f"Test Lambda set to {train_lambda}")
             cnt = test_loader.__len__()
             print(cnt)
 
@@ -416,6 +418,7 @@ if __name__ == "__main__":
     logger.info("CAM_I training")
     logger.info(open(args.config).read())
     parse_config(args.config)
+    train_lambda = args.test_lmd
 
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
