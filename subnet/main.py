@@ -117,7 +117,7 @@ parser.add_argument('--lmd-upper_bound', type=int, default=256,
 parser.add_argument('--test-interval', type=int, default=2000)
 parser.add_argument('--exp-name', type=str, default='exp')
 parser.add_argument('--batch-per-gpu', type=int, default=2)
-parser.add_argument('--test-path', type=str, default='data/Kodak24/kodak')
+parser.add_argument('--test-dataset-path', type=str, default='data/Kodak24/kodak')
 parser.add_argument('--test-lmd', type=int, default=256)
 
 
@@ -227,13 +227,13 @@ def testuvg(global_step):
 
 
 
-def test(global_step, test_dataset_I):
+def test(global_step, test_dataset_path):
     '''
     Test one model to one test dataset
     In this version, specific designed for Kodak
     '''
     if accelerator.is_main_process:
-        test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
+        test_loader = DataLoader(dataset=test_dataset_path, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
         net.cuda().eval()
         with torch.no_grad():
             sumbpp = 0
@@ -249,8 +249,8 @@ def test(global_step, test_dataset_I):
 
             recon_path_768 = "./fullpreformance/kodak_recon_768/"
             recon_path_512 = "./fullpreformance/kodak_recon_512/"
-            gt_path_768 = "data/Kodak24/images/768x512"
-            gt_path_512 = "data/Kodak24/images/512x768"
+            gt_path_768 = os.path.join(test_dataset_path,"images","768x512")
+            gt_path_512 = os.path.join(test_dataset_path,"images","512x768")
 
 
             for num, input in enumerate(test_loader):
@@ -411,7 +411,7 @@ def train(epoch, global_step):
 
         if global_step % args.test_interval == 0:
             save_model(model, global_step)
-            test(global_step, KodakDataSet(args.test_path))
+            test(global_step, KodakDataSet(os.path.join(args.test_dataset_path,"kodak")))
     log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
     logger.info(log)
     return global_step
@@ -472,13 +472,13 @@ if __name__ == "__main__":
         # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
         # testuvg(global_step)
         print('testing Kodak')
-        test_dataset_I = KodakDataSet(args.test_path)
+        test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path,"kodak"))
         test(global_step, test_dataset_I)
         exit(0)
 
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
     # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
-    test_dataset_I = KodakDataSet(args.test_path)
+    test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path,"kodak"))
     stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch * gpu_num))  # * gpu_num))
 
     stage_progress_4 = [80765 * 7, 80765 * 8]
@@ -505,4 +505,4 @@ if __name__ == "__main__":
 
         if global_step > 80765 * 3:
             # testuvg(global_step)
-            test(global_step, KodakDataSet(args.test_path))
+            test(global_step, KodakDataSet(os.path.join(args.test_dataset_path,"kodak")))
