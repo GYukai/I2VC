@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=4 python dis_eva.py
