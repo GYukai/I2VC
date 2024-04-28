@@ -1,16 +1,15 @@
-source /root/anaconda3/bin/activate gyk
+# Test fid calculation specifically for 4090
+#source /root/anaconda3/bin/activate gyk
 ROOT=./
 export PYTHONPATH=$PYTHONPATH:$ROOT
-python -u $ROOT/subnet/main.py --log loguvg.txt --testuvg --config config2048.json \
- --test-lmd 2 \
- --pretrain snapshot/candicateiter163530.model \
- --test-path data/Kodak24/kodak
 
-# CUDA_VISIBLE_DEVICES=3 python -u $ROOT/subnet/main.py --log loguvg.txt --testuvg --config config2048.json --pretrain $ROOT/snapshot/iter565355.model
-# CUDA_VISIBLE_DEVICES=3 python -u $ROOT/subnet/main.py --log loguvg.txt --testuvg --config config2048.json --pretrain $ROOT/snapshot/iter646120.model
-# CUDA_VISIBLE_DEVICES=0  python -u $ROOT/subnet/main.py --log loguvg.txt --testuvg --config config512.json \
-#     --pretrain $ROOT/snapshot/iter726885.model
-# CUDA_VISIBLE_DEVICES=0  python -u $ROOT/subnet/main.py --log loguvg.txt --testuvg --config config1024.json \
-#     --pretrain $ROOT/snapshot/iter726885.model
-# CUDA_VISIBLE_DEVICES=0  python -u $ROOT/subnet/main.py --log loguvg.txt --testuvg --config config2048.json \
-#     --pretrain $ROOT/snapshot/iter726885.model
+mkdir $ROOT/snapshot
+accelerate launch --main_process_port 29501 --config_file config_single.yaml   \
+        $ROOT/subnet/main.py --log log.txt --config $ROOT/config256.json --mse_loss-factor 0 --lps_loss-factor 1.0 \
+        --lmd-mode random --lmd-lower_bound 2 --lmd-upper_bound 16 \
+        --exp-name test \
+        --batch-per-gpu 2 \
+        --test-path data/Kodak24/kodak \
+        --pretrain  snapshot/mark/lpips0.03.model \
+        --testuvg
+#        --from_scratch

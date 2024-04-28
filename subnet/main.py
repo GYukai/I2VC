@@ -19,6 +19,7 @@ import src.models.utils as utility
 from dataset import DataSet, KodakDataSet
 from drawkodak import kodakdrawplt, drawplt
 from drawuvg import uvgdrawplt
+from subnet.fid_eva.fid_eva import calc_fid
 from subnet.src.models.CAM_net import *
 
 from subnet.dis_eva.dis_eva import calc_dis
@@ -229,6 +230,7 @@ def testuvg(global_step):
 def test(global_step, test_dataset_I):
     '''
     Test one model to one test dataset
+    In this version, specific designed for Kodak
     '''
     if accelerator.is_main_process:
         test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
@@ -245,6 +247,12 @@ def test(global_step, test_dataset_I):
             cnt = test_loader.__len__()
             print(cnt)
 
+            recon_path_768 = "./fullpreformance/kodak_recon_768/"
+            recon_path_512 = "./fullpreformance/kodak_recon_512/"
+            gt_path_768 = "data/Kodak24/images/768x512"
+            gt_path_512 = "data/Kodak24/images/512x768"
+
+
             for num, input in enumerate(test_loader):
                 frame = Var(input)
                 height, width = frame.shape[-2:]
@@ -254,9 +262,15 @@ def test(global_step, test_dataset_I):
                 latents = Var(latents * sigma)
 
                 clipped_recon_image, _, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
-                recon_path = "./fullpreformance/kodak_recon/"
+
+                os.makedirs(recon_path_768, exist_ok=True)
+                os.makedirs(recon_path_512, exist_ok=True)
+                h, w = clipped_recon_image.shape[2], clipped_recon_image.shape[3]
                 img_name = 'kodim' + str(num + 1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
-                save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path, img_name))
+                if w == 768:
+                    save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path_768, img_name))
+                else:
+                    save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path_512, img_name))
 
                 bpp_c = torch.mean(bpp).cpu().detach().numpy()
                 psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
@@ -271,6 +285,10 @@ def test(global_step, test_dataset_I):
                 sumlpips += (lpips_c)
                 sumdis += (dis)
 
+            fid_768 = calc_fid(recon_path_768, gt_path_768)
+            fid_512 = calc_fid(recon_path_512, gt_path_512)
+            sumfid = (fid_512*6 + fid_768*18)
+
             log = "global step %d : " % (global_step) + "\n"
             logger.info(log)
             sumbpp /= cnt
@@ -278,10 +296,11 @@ def test(global_step, test_dataset_I):
             summsssim /= cnt
             sumlpips /= cnt
             sumdis /= cnt
-            log = f"Kodakdataset : average bpp : {sumbpp:.6f}, average psnr : {sumpsnr:.6f}, average msssim: {summsssim:.6f}\n, average lpips: {sumlpips:.6f}, average DIS: {sumdis:.6f}\n"
+            sumfid /= cnt
+            log = f"Kodakdataset : average bpp : {sumbpp:.6f}, average psnr : {sumpsnr:.6f}, average msssim: {summsssim:.6f}\n, average lpips: {sumlpips:.6f}, average DIS: {sumdis:.6f}, average fid:{sumfid:6f}\n"
 
             logger.info(log)
-            drawplt(bpp=[sumbpp], lpips=[sumlpips], psnr=[sumpsnr], disit=[sumdis])
+            drawplt(bpp=[sumbpp], lpips=[sumlpips], psnr=[sumpsnr], disit=[sumdis], fid=[sumfid])
             if not args.testuvg:
                 tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
                 tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
