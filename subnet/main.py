@@ -14,6 +14,7 @@ from pytorch_msssim import ms_ssim
 from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 import src.models.utils as utility
 from dataset import DataSet, KodakDataSet
@@ -334,7 +335,7 @@ def train(epoch, global_step):
     tot_iter = len(train_loader)
     t0 = datetime.datetime.now()
 
-    for batch_idx, input in enumerate(train_loader):
+    for batch_idx, input in tqdm(enumerate(train_loader)):
         global_step += 1
         bat_cnt += 1
         image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
