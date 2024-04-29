@@ -468,14 +468,14 @@ def main():
             global_step = load_model(model, args.pretrain)
             pretrain_name = args.pretrain
         else:
-            folder_path = "./snapshot/"
+            folder_path = os.path.join('snapshot',args.exp_name)
             files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-            lastest_file = max(files, key=lambda x: os.path.getctime(folder_path + x))
+            lastest_file = max(files, key=lambda x: os.path.getctime(os.path.join(folder_path , x)))
             print("AUTO LOAD : ", lastest_file)
             print("loading pretrain : ", lastest_file)
-            global_step = load_model(model, folder_path + lastest_file)
+            global_step = load_model(model, os.path.join(folder_path , lastest_file))
             print(f'global_step: {global_step}')
-            pretrain_name = folder_path + lastest_file
+            pretrain_name = os.path.join(folder_path , lastest_file)
 
     net = model
     bp_parameters = net.parameters()
