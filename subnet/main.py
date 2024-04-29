@@ -463,6 +463,7 @@ def main():
     #     para.requires_grad = False
     model.unet.requires_grad_(True)
     print("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
+    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
 
     pretrain_name = 'NONE'
     if not args.from_scratch:
