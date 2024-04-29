@@ -1,3 +1,5 @@
-The version README for develop.
+0429-3090-unet-on-scratch
 
-Should convey the basic idea for the version.
+Train with unet on.
+
+- 2024/04/29 21:40 With PURE MSE and ONLY UNET and VC3 First.

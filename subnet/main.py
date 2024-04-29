@@ -422,7 +422,7 @@ def main():
     vae = pipe.vqvae
     unet = pipe.unet
     unet.requires_grad_(False)
-    # vae.requires_grad_(False)
+    vae.requires_grad_(False)
 
     latents_dtype = next(unet.parameters()).dtype
     sigma = scheduler.init_noise_sigma
@@ -459,6 +459,9 @@ def main():
     print("----------")
 
     model: CAM_net = CAM_net(vae, unet, scheduler)
+    # for para in model.parameters():
+    #     para.requires_grad = False
+    model.unet.requires_grad_(True)
     print("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
 
     pretrain_name = 'NONE'
