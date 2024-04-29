@@ -449,7 +449,7 @@ def main():
     logger.setLevel(logging.INFO)
     logger.info("\n\n\n\n")
     logger.info("\n==================================\nCAM_I training")
-    logger.info(open(args.config).read())
+    # logger.info(open(args.config).read())
 
 
     print("----------")
@@ -458,6 +458,7 @@ def main():
     print("----------")
 
     model: CAM_net = CAM_net(vae, unet, scheduler)
+    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
     print("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
 
     pretrain_name = 'NONE'
