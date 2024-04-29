@@ -202,8 +202,9 @@ def testkodak(global_step, test_dataset, net, tb_logger, logger):
             cnt = test_loader.__len__()
             print(cnt)
 
-            recon_path_768 = "./fullpreformance/kodak_recon_768/"
-            recon_path_512 = "./fullpreformance/kodak_recon_512/"
+            recon_path_768 = os.path.join("recon",args.exp_name,str(global_step),"kodak_recon_768")
+            recon_path_512 = os.path.join("recon",args.exp_name,str(global_step),"kodak_recon_512")
+
             gt_path_768 = os.path.join(args.test_dataset_path, "images", "768x512")
             gt_path_512 = os.path.join(args.test_dataset_path, "images", "512x768")
 
@@ -449,7 +450,7 @@ def main():
     logger.setLevel(logging.INFO)
     logger.info("\n\n\n\n")
     logger.info("\n==================================\nCAM_I training")
-    # logger.info(open(args.config).read())
+    logger.info(open(args.config).read())
 
 
     print("----------")
@@ -458,7 +459,6 @@ def main():
     print("----------")
 
     model: CAM_net = CAM_net(vae, unet, scheduler)
-    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
     print("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
 
     pretrain_name = 'NONE'
