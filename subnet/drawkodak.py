@@ -64,7 +64,10 @@ def kodakdrawplt(lbpp, lpsnr, llpips, global_step, la='Ours', testfull=False):
     plt.clf()
 
 
-def drawplt(bpp, psnr=None, lpips=None, fid=None, disit=None, savepath='./outfig/'):
+def drawplt(bpp, psnr=None, lpips=None, fid=None, disit=None, savepath='./outfig/', step=0):
+
+    if not os.path.exists(savepath):
+        os.makedirs(savepath)
 
     _metrics = [psnr, lpips, fid, disit]
     for i in range(len(_metrics)):
@@ -74,10 +77,10 @@ def drawplt(bpp, psnr=None, lpips=None, fid=None, disit=None, savepath='./outfig
 
     LineWidth = 4
     Markersize = 10
-    savepathdis = os.path.join(savepath, "Kodak_dis.png")
-    savepathlps = os.path.join(savepath, "Kodak_lps.png")
-    savepathfid = os.path.join(savepath, "Kodak_fid.png")
-    savepathpsnr = os.path.join(savepath, "Kodak_psnr.png")
+    savepathdis = os.path.join(savepath, f"Kodak_dis_{step}.png")
+    savepathlps = os.path.join(savepath, f"Kodak_lps_{step}.png")
+    savepathfid = os.path.join(savepath, f"Kodak_fid_{step}.png")
+    savepathpsnr = os.path.join(savepath, f"Kodak_psnr_{step}.png")
     plt.rcParams.update({'font.size': 40})
     plt.rcParams['figure.figsize'] = (20, 16)
 
