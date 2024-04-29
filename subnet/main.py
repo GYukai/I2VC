@@ -450,7 +450,7 @@ def main():
     logger.setLevel(logging.INFO)
     logger.info("\n\n\n\n")
     logger.info("\n==================================\nCAM_I training")
-    logger.info(open(args.config).read())
+    # logger.info(open(args.config).read())
 
 
     print("----------")
