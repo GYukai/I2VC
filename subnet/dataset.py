@@ -226,7 +226,7 @@ class DataSet(data.Dataset):
         
         self.featurenoise = torch.zeros([out_channel_M, self.im_height // 16, self.im_width // 16])
         self.znoise = torch.zeros([out_channel_N, self.im_height // 64, self.im_width // 64])
-        print("dataset find image: ", len(self.image_list1))
+        # print("dataset find image: ", len(self.image_list1))
 
     def get_vimeo(self, rootdir="../../data/vimeo_septuplet/sequences/", filefolderlist="../../data/vimeo_septuplet/test.txt"):
         with open(filefolderlist) as f:

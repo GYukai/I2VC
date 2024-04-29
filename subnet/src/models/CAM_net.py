@@ -1,3 +1,5 @@
+import os
+
 import torch
 import math
 import torch.nn as nn
@@ -13,8 +15,11 @@ from .Restormer import TransformerBlock
 from ..lpips_pytorch import lpips
 
 
-def save_model(model, iter):
-    torch.save(model.state_dict(), "./snapshot/iter{}.model".format(iter))
+def save_model(model, iter, exp_name='default'):
+    save_path = os.path.join("snapshot", exp_name)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    torch.save(model.state_dict(), os.path.join("snapshot",exp_name,f"iter{iter}.model"))
 
 
 def load_model(model, f):
