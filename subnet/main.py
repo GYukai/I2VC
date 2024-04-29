@@ -228,13 +228,13 @@ def testuvg(global_step):
 
 
 
-def test(global_step, test_dataset_path):
+def test(global_step, test_dataset):
     '''
     Test one model to one test dataset
     In this version, specific designed for Kodak
     '''
     if accelerator.is_main_process:
-        test_loader = DataLoader(dataset=test_dataset_path, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
+        test_loader = DataLoader(dataset=test_dataset, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
         net.cuda().eval()
         with torch.no_grad():
             sumbpp = 0
@@ -250,8 +250,8 @@ def test(global_step, test_dataset_path):
 
             recon_path_768 = "./fullpreformance/kodak_recon_768/"
             recon_path_512 = "./fullpreformance/kodak_recon_512/"
-            gt_path_768 = os.path.join(test_dataset_path,"images","768x512")
-            gt_path_512 = os.path.join(test_dataset_path,"images","512x768")
+            gt_path_768 = os.path.join(args.test_dataset_path,"images","768x512")
+            gt_path_512 = os.path.join(args.test_dataset_path,"images","512x768")
 
 
             for num, input in enumerate(test_loader):
