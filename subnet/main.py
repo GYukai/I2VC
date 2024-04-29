@@ -432,7 +432,9 @@ def main():
     parse_config(args.config)
     train_lambda = args.test_lmd
 
-    tb_logger = SummaryWriter(f'./events/{args.exp_name}')
+    time_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    tb_path = os.path.join('events', args.exp_name, time_str)
+    tb_logger = SummaryWriter(tb_path)
     gpu_per_batch = args.batch_per_gpu
 
     # logger = get_logger(__name__)
