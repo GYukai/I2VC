@@ -468,13 +468,13 @@ if __name__ == "__main__":
     optimizer = optim.Adam(bp_parameters, lr=base_lr)
 
     global train_dataset, test_dataset
+    test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path, "kodak"))
+    test(global_step, test_dataset_I)
     if args.testuvg:
         # print('testing UVG')
         # test_dataset = UVGDataSet_I(refdir=ref_i_dir)
         # testuvg(global_step)
         print('testing Kodak')
-        test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path,"kodak"))
-        test(global_step, test_dataset_I)
         exit(0)
 
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
