@@ -481,8 +481,8 @@ def main():
     bp_parameters = net.parameters()
 
     test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path, "kodak"))
-    testkodak(global_step, test_dataset_I, net, tb_logger, logger)
     if args.testuvg:
+        testkodak(global_step, test_dataset_I, net, tb_logger, logger)
         print('Tested Kodak, END')
         exit(0)
 
