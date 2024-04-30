@@ -263,10 +263,14 @@ def testkodak(global_step, test_dataset, net, tb_logger, logger):
                 tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
                 tb_logger.add_scalar('kodak_dis', sumdis, global_step)
 
-
-def run(model, batch_size, optimizer, lr, train_dataset, epoch, global_step, logger, tb_logger, num_workers,
+def clip_gradient(optimizer, grad_clip):
+    for group in optimizer.param_groups:
+        for param in group["params"]:
+            if param.grad is not None:
+                param.grad.data.clamp_(-grad_clip, grad_clip)
+def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb_logger, num_workers,
         print_step=100, cal_step=10):
-    print("epoch", epoch)
+
     gpu_per_batch = batch_size
     cur_lr = lr
     net = model
@@ -285,88 +289,83 @@ def run(model, batch_size, optimizer, lr, train_dataset, epoch, global_step, log
     sumpsnr = 0
     sumbpp = 0
     sum_lpips = 0
-    sum_feature = 0
+    sum_dis = 0
     tot_iter = len(train_loader)
     t0 = datetime.datetime.now()
     try:
-        for batch_idx, input in tqdm(enumerate(train_loader)):
-            global_step += 1
-            bat_cnt += 1
-            image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
-            quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
-            latents = Variable(input[5])
-            if args.lmd_mode == 'fixed':
-                var_lambda = args.lmd_fixed_value
-            elif args.lmd_mode == 'random':
-                var_lambda = np.random.randint(args.lmd_lower_bound, args.lmd_upper_bound)
-            else:
-                raise ValueError(f"Invalid lambda mode: {args.lmd_mode}")
-            clipped_recon_bimage, _, distortion, lpips_distortion, bpp = net(input_image=image2, latents=latents,
-                                                                             lmd=var_lambda, lmd_boundary=2048,
-                                                                             previous_frame=None, feature_frame=None,
-                                                                             quant_noise_feature=quant_noise_feature,
-                                                                             quant_noise_z=quant_noise_z)
-
-            distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
-            dis_loss = calc_dis(image2, clipped_recon_bimage)
-            rd_loss = var_lambda * (args.mse_loss_factor * distortion + args.lps_loss_factor * lpips_distortion) + bpp
-
-            optimizer.zero_grad()
-            accelerator.backward(rd_loss)
-
-            def clip_gradient(optimizer, grad_clip):
-                for group in optimizer.param_groups:
-                    for param in group["params"]:
-                        if param.grad is not None:
-                            param.grad.data.clamp_(-grad_clip, grad_clip)
-
-            clip_gradient(optimizer, 0.5)
-            optimizer.step()
-
-            if global_step % cal_step == 0:
-                cal_cnt += 1
-                if distortion > 0:
-                    psnr = 10 * (torch.log(1 * 1 / distortion) / np.log(10)).cpu().detach().numpy()
-                    lpips = lpips_distortion.cpu().detach().numpy()
+        for epoch in range(stepoch, tot_epoch):
+            print("epoch", stepoch)
+            print(f"gloabl_step: {global_step}")
+            for batch_idx, input in tqdm(enumerate(train_loader)):
+                global_step += 1
+                bat_cnt += 1
+                image1, image2, image3 = Variable(input[0]), Variable(input[1]), Variable(input[2])
+                quant_noise_feature, quant_noise_z = Variable(input[3]), Variable(input[4])
+                latents = Variable(input[5])
+                if args.lmd_mode == 'fixed':
+                    var_lambda = args.lmd_fixed_value
+                elif args.lmd_mode == 'random':
+                    var_lambda = np.random.randint(args.lmd_lower_bound, args.lmd_upper_bound)
                 else:
-                    psnr = 100
+                    raise ValueError(f"Invalid lambda mode: {args.lmd_mode}")
+                clipped_recon_bimage, _, distortion, lpips_distortion, bpp = net(input_image=image2, latents=latents,
+                                                                                 lmd=var_lambda, lmd_boundary=2048,
+                                                                                 previous_frame=None, feature_frame=None,
+                                                                                 quant_noise_feature=quant_noise_feature,
+                                                                                 quant_noise_z=quant_noise_z)
 
-                loss_ = rd_loss.cpu().detach().numpy()
+                distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
+                dis_loss = calc_dis(image2, clipped_recon_bimage)
+                rd_loss = var_lambda * (args.mse_loss_factor * distortion + args.lps_loss_factor * lpips_distortion) + bpp
 
-                sumloss += loss_
-                sumpsnr += psnr
-                sumbpp += bpp.cpu().detach()
-                sum_lpips += lpips
+                optimizer.zero_grad()
+                accelerator.backward(rd_loss)
 
-            if (batch_idx % print_step) == 0 and bat_cnt > 1:
-                tb_logger.add_scalar('lr', cur_lr, global_step)
-                tb_logger.add_scalar('rd_loss', sumloss / cal_cnt, global_step)
-                tb_logger.add_scalar('psnr', sumpsnr / cal_cnt, global_step)
-                tb_logger.add_scalar('bpp', sumbpp / cal_cnt, global_step)
-                tb_logger.add_scalar('lpips', sum_lpips / cal_cnt, global_step)
-                tb_logger.add_scalar('feature_loss', sum_feature / cal_cnt, global_step)
-                t1 = datetime.datetime.now()
-                deltatime = t1 - t0
-                log = 'Train Epoch : {:02} [{:4}/{:4} ({:3.0f}%)] Avgloss:{:.6f} lr:{} time:{}'.format(epoch, batch_idx,
-                                                                                                       len(train_loader),
-                                                                                                       100. * batch_idx / len(
-                                                                                                           train_loader),
-                                                                                                       sumloss / cal_cnt,
-                                                                                                       cur_lr, (
-                                                                                                               deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt)
-                print(log)
-                log = 'details : psnr : {:.2f} bpp : {:.6f}'.format(sumpsnr / cal_cnt, sumbpp / cal_cnt)
-                print(log)
-                print(
-                    f"data of last iter: distortion: {distortion}, bpp: {bpp}, lpips_distortion: {lpips_distortion}, rd_loss:{rd_loss}, mse-factor: {args.mse_loss_factor}, lps-factor: {args.lps_loss_factor}")
-                bat_cnt = 0
-                cal_cnt = 0
-                sumbpp = sumloss = sumpsnr = sum_lpips = sum_feature = 0
-                t0 = t1
 
-            if global_step % args.test_interval == 0:
-                save_model(model, global_step)
-                testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, tb_logger, logger)
+
+                clip_gradient(optimizer, 0.5)
+                optimizer.step()
+
+                if global_step % cal_step == 0:
+                    cal_cnt += 1
+                    if distortion > 0:
+                        psnr = 10 * (torch.log(1 * 1 / distortion) / np.log(10)).cpu().detach().numpy()
+                        lpips = lpips_distortion.cpu().detach().numpy()
+                    else:
+                        psnr = 100
+
+                    loss_ = rd_loss.cpu().detach().numpy()
+
+                    sumloss += loss_
+                    sumpsnr += psnr
+                    sum_dis += dis_loss
+                    sumbpp += bpp.cpu().detach()
+                    sum_lpips += lpips
+
+                if (batch_idx % print_step) == 0 and bat_cnt > 1:
+                    tb_logger.add_scalar('lr', cur_lr, global_step)
+                    tb_logger.add_scalar('rd_loss', sumloss / cal_cnt, global_step)
+                    tb_logger.add_scalar('psnr', sumpsnr / cal_cnt, global_step)
+                    tb_logger.add_scalar('bpp', sumbpp / cal_cnt, global_step)
+                    tb_logger.add_scalar('lpips', sum_lpips / cal_cnt, global_step)
+                    tb_logger.add_scalar('dis', sum_dis / cal_cnt, global_step)
+                    t1 = datetime.datetime.now()
+                    deltatime = t1 - t0
+                    print(f'Train Epoch : {epoch:02} Global Step: {global_step}  Avgloss:{sumloss / cal_cnt:.6f} lr:{cur_lr} time:{(deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt}')
+                    print(f'Details : psnr : {sumpsnr / cal_cnt:.2f} bpp : {sumbpp / cal_cnt:.6f} lpips : {sum_lpips / cal_cnt:.6f} dis : {sum_dis / cal_cnt:.6f}')
+                    print(f"mse-factor: {args.mse_loss_factor}, lps-factor: {args.lps_loss_factor}")
+
+                    bat_cnt = 0
+                    cal_cnt = 0
+                    sumbpp = sumloss = sumpsnr = sum_lpips = sum_dis = 0
+                    t0 = t1
+
+                if global_step % args.test_interval == 0:
+                    save_model(model, global_step)
+                    testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, tb_logger, logger)
+
+            save_model(model, global_step)
+            testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, tb_logger, logger)
         log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
         logger.info(log)
         return global_step
@@ -496,11 +495,8 @@ def main():
 
     train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
 
+    global stepoch
     stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch * gpu_num))  # * gpu_num))
-
-    stage_progress_4 = [80765 * 7, 80765 * 8]
-    stage_progress = len(stage_progress_4) - 1
-    lrs = [1e-5, 1e-5]
 
     log_exp = f'EXPERIMENT: {args.exp_name}'
     log_pretrain = f'PRETRAIN: {pretrain_name}'
@@ -511,28 +507,14 @@ def main():
     logger.info(log_pretrain)
     logger.info(log_lambda)
     logger.info(log_lmd_mode)
+    cur_lr = 1e-5
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cur_lr)
 
-    for epoch in range(stepoch, tot_epoch):
-        for i in range(len(stage_progress_4)):
-            if global_step < stage_progress_4[i] - 1:
-                stage_progress = i
-                break
-
-        log1 = f'Epoch: {stage_progress + 1}, Step: {global_step}'
-        logger.info(log1)
-        cur_lr = lrs[stage_progress]
-
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cur_lr)
-        if global_step > tot_step:
-            logger.info(f"Saving at global step {global_step}")
-            save_model(model, global_step,args.exp_name)
-            print("Finish training")
-            break
-        global_step = run(epoch=epoch, global_step=global_step, tb_logger=tb_logger, model=net,
+    global_step = run(global_step=global_step, tb_logger=tb_logger, model=net,
                           batch_size=gpu_per_batch, optimizer=optimizer, lr=cur_lr,
                           train_dataset=train_dataset, logger=logger, num_workers=num_workers)
-        logger.info(f"Saving at global step {global_step}")
-        save_model(model, global_step,args.exp_name)
+    logger.info(f"Saving at global step {global_step}")
+    save_model(model, global_step,args.exp_name)
 
 
 if __name__ == "__main__":
