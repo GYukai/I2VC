@@ -24,6 +24,8 @@ from subnet.dis_eva.dis_eva import calc_dis
 from subnet.fid_eva.fid_eva import calc_fid
 from subnet.src.models.CAM_net import *
 from accelerate.logging import get_logger
+from transformers import get_linear_schedule_with_warmup
+from transformers import get_polynomial_decay_schedule_with_warmup
 
 # def geti(lamb):
 #     if lamb == 2048:
@@ -268,7 +270,7 @@ def clip_gradient(optimizer, grad_clip):
         for param in group["params"]:
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
-def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb_logger, num_workers,
+def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb_logger, num_workers, scheduler,
         print_step=100, cal_step=10):
 
     gpu_per_batch = batch_size
@@ -279,7 +281,7 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb
                               pin_memory=True)
     # train_loader, net, optimizer, scheduler = accelerator.prepare(train_loader, net, optimizer, scheduler)
     train_loader = accelerator.prepare(train_loader)
-    net, optimzier = accelerator.prepare(net, optimizer)
+    net, optimzier, scheduler = accelerator.prepare(net, optimizer, scheduler)
 
     net.train()
     print("Requires_grad parameters number: " + str(utility.count_network_parameters(net)))
@@ -327,6 +329,7 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb
 
                 clip_gradient(optimizer, 0.5)
                 optimizer.step()
+                scheduler.step()
 
                 if global_step % cal_step == 0:
                     cal_cnt += 1
@@ -345,7 +348,7 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb
                     sum_lpips += lpips
 
                 if (batch_idx % print_step) == 0 and bat_cnt > 1:
-                    tb_logger.add_scalar('lr', cur_lr, global_step)
+                    tb_logger.add_scalar('lr', scheduler.get_last_lr(), global_step)
                     tb_logger.add_scalar('rd_loss', sumloss / cal_cnt, global_step)
                     tb_logger.add_scalar('psnr', sumpsnr / cal_cnt, global_step)
                     tb_logger.add_scalar('bpp', sumbpp / cal_cnt, global_step)
@@ -353,7 +356,7 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb
                     tb_logger.add_scalar('dis', sum_dis / cal_cnt, global_step)
                     t1 = datetime.datetime.now()
                     deltatime = t1 - t0
-                    print(f'Train Epoch : {epoch:02} Global Step: {global_step}  Avgloss:{sumloss / cal_cnt:.6f} lr:{cur_lr} time:{(deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt}')
+                    print(f'Train Epoch : {epoch:02} Lr: {scheduler.get_last_lr()} Global Step: {global_step}  Avgloss:{sumloss / cal_cnt:.6f} lr:{cur_lr} time:{(deltatime.seconds + 1e-6 * deltatime.microseconds) / bat_cnt}')
                     print(f'Details : psnr : {sumpsnr / cal_cnt:.2f} bpp : {sumbpp / cal_cnt:.6f} lpips : {sum_lpips / cal_cnt:.6f} dis : {sum_dis / cal_cnt:.6f}')
                     print(f"mse-factor: {args.mse_loss_factor}, lps-factor: {args.lps_loss_factor}")
 
@@ -508,12 +511,16 @@ def main():
     logger.info(log_pretrain)
     logger.info(log_lambda)
     logger.info(log_lmd_mode)
-    cur_lr = 1e-5
+    logger.info(log_tb)
+    cur_lr = 5e-4
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cur_lr)
+    scheduler = get_polynomial_decay_schedule_with_warmup(
+        optimizer, num_warmup_steps=5000, num_training_steps=70000, lr_end=1e-6
+    )
 
     global_step = run(global_step=global_step, tb_logger=tb_logger, model=net,
                           batch_size=gpu_per_batch, optimizer=optimizer, lr=cur_lr,
-                          train_dataset=train_dataset, logger=logger, num_workers=num_workers)
+                          train_dataset=train_dataset, logger=logger, num_workers=num_workers, scheduler=scheduler)
     logger.info(f"Saving at global step {global_step}")
     save_model(model, global_step,args.exp_name)
 
