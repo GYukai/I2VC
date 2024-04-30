@@ -282,6 +282,8 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb
     net, optimzier = accelerator.prepare(net, optimizer)
 
     net.train()
+    print("Requires_grad parameters number: " + str(utility.count_network_parameters(net)))
+    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(net)))
 
     bat_cnt = 0
     cal_cnt = 0
@@ -465,8 +467,7 @@ def main():
     # for para in model.parameters():
     #     para.requires_grad = False
     model.unet.requires_grad_(True)
-    print("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
-    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
+
 
     pretrain_name = 'NONE'
     if not args.from_scratch:
