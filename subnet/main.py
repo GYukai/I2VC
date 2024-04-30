@@ -186,8 +186,8 @@ def testkodak(global_step, test_dataset, net, tb_logger, logger):
     In this version, specific designed for Kodak
     '''
     if accelerator.is_main_process:
-        latents_dtype = next(net.parameters()).dtype
-        sigma = net.scheduler.init_noise_sigma
+        # latents_dtype = next(net.parameters()).dtype
+        # sigma = net.scheduler.init_noise_sigma
         test_loader = DataLoader(dataset=test_dataset, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
         net.cuda().eval()
         with torch.no_grad():
@@ -424,7 +424,9 @@ def main():
     unet.requires_grad_(False)
     vae.requires_grad_(False)
 
+    global latents_dtype
     latents_dtype = next(unet.parameters()).dtype
+    global sigma
     sigma = scheduler.init_noise_sigma
     ##################################################################################
 
@@ -502,6 +504,7 @@ def main():
 
     log_exp = f'EXPERIMENT: {args.exp_name}'
     log_pretrain = f'PRETRAIN: {pretrain_name}'
+    log_tb = f'TENSORBOARD: {tb_path}'
     log_lambda = f'TST_LAMBDA: {train_lambda}'
     log_lmd_mode = f'TRAIN_LMD_MODE: {args.lmd_mode}, FIXED_LMD: {args.lmd_fixed_value}, LOWER_LMD: {args.lmd_lower_bound}, UPPER_LMD: {args.lmd_upper_bound}'
     logger.info(log_exp)
