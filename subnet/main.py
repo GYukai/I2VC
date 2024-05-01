@@ -258,12 +258,12 @@ def testkodak(global_step, test_dataset, net, logger):
 
             logger.info(log)
             drawplt(bpp=[sumbpp], lpips=[sumlpips], psnr=[sumpsnr], disit=[sumdis], fid=[sumfid], savepath=f"outfig/{args.exp_name}", step=global_step)
-            if not args.testuvg:
-                tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
-                tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
-                tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
-                tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
-                tb_logger.add_scalar('kodak_dis', sumdis, global_step)
+            # if not args.testuvg:
+            #     tb_logger.add_scalar('kodak_bpp', sumbpp, global_step)
+            #     tb_logger.add_scalar('kodak_psnr', sumpsnr, global_step)
+            #     tb_logger.add_scalar('kodak_lpips', sumlpips, global_step)
+            #     tb_logger.add_scalar('kodak_msssim', summsssim, global_step)
+            #     tb_logger.add_scalar('kodak_dis', sumdis, global_step)
 
 def clip_gradient(optimizer, grad_clip):
     for group in optimizer.param_groups:
@@ -366,17 +366,17 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, nu
                     t0 = t1
 
                 if global_step % args.test_interval == 0:
-                    save_model(model, global_step)
+                    save_model(net, global_step, args.exp_name)
                     testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
 
-            save_model(model, global_step)
+            save_model(net, global_step, args.exp_name)
             testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
         log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
         logger.info(log)
         return global_step
     except KeyboardInterrupt:
         logger.info(f"Training interrupted, saving at {global_step} step")
-        save_model(model, global_step, args.exp_name)
+        save_model(net, global_step, args.exp_name)
         exit(0)
 
 
@@ -519,11 +519,11 @@ def main():
         optimizer, num_warmup_steps=5000, num_training_steps=70000, lr_end=1e-6
     )
 
-    global_step = run(global_step=global_step, tb_logger=tb_logger, model=net,
+    global_step = run(global_step=global_step, model=net,
                           batch_size=gpu_per_batch, optimizer=optimizer, lr=cur_lr,
                           train_dataset=train_dataset, logger=logger, num_workers=num_workers, scheduler=scheduler)
-    logger.info(f"Saving at global step {global_step}")
-    save_model(model, global_step,args.exp_name)
+    # logger.info(f"Saving at global step {global_step}")
+    # save_model(model, global_step,args.exp_name)
 
 
 if __name__ == "__main__":
