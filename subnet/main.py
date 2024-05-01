@@ -182,7 +182,7 @@ def save_image_tensor2cv2(input_tensor: torch.Tensor, filename):
 #         uvgdrawplt([sumbpp], [sumpsnr], [summsssim], global_step, testfull=True)
 
 
-def testkodak(global_step, test_dataset, net, tb_logger, logger):
+def testkodak(global_step, test_dataset, net, logger):
     '''
     Test one model to one test dataset
     In this version, specific designed for Kodak
@@ -270,7 +270,7 @@ def clip_gradient(optimizer, grad_clip):
         for param in group["params"]:
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
-def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb_logger, num_workers, scheduler,
+def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, num_workers, scheduler,
         print_step=100, cal_step=10):
 
     gpu_per_batch = batch_size
@@ -367,10 +367,10 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, tb
 
                 if global_step % args.test_interval == 0:
                     save_model(model, global_step)
-                    testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, tb_logger, logger)
+                    testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
 
             save_model(model, global_step)
-            testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, tb_logger, logger)
+            testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
         log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
         logger.info(log)
         return global_step
@@ -440,6 +440,7 @@ def main():
 
     time_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     tb_path = os.path.join('events', args.exp_name, time_str)
+    global tb_logger
     tb_logger = SummaryWriter(tb_path)
     gpu_per_batch = args.batch_per_gpu
 
@@ -493,7 +494,7 @@ def main():
 
     test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path, "kodak"))
     if args.testuvg:
-        testkodak(global_step, test_dataset_I, net, tb_logger, logger)
+        testkodak(global_step, test_dataset_I, net, logger)
         print('Tested Kodak, END')
         exit(0)
 
