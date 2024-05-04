@@ -366,9 +366,10 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, nu
                     t0 = t1
 
                 if global_step % args.test_interval == 0:
+                    logger.info(f"Saving at exp_name: {args.exp_name} at global step {global_step}")
                     save_model(net, global_step, args.exp_name)
                     testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
-
+            logger.info(f"Saving at exp_name: {args.exp_name} at global step {global_step}")
             save_model(net, global_step, args.exp_name)
             testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
         log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
