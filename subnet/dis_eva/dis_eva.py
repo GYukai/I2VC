@@ -6,7 +6,7 @@ import torch
 device = "cuda:0"
 test_for_dis = DISTS().to(device)
 def calc_dis(gt, recon):
-    dis = test_for_dis(gt.to(device), recon.to(device), batch_average=True).item()
+    dis = test_for_dis(gt.to(device), recon.to(device), batch_average=True)
     return dis
 
 # UVG = ["Beauty", "Bosphorus", "HoneyBee", "Jockey", "ReadySteadyGo", "ShakeNDry", "YachtRide"]
