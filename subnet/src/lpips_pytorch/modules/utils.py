@@ -14,7 +14,7 @@ def get_state_dict(net_type: str = 'alex', version: str = '0.1'):
         + f'/models/weights/v{version}/{net_type}.pth'
 
     # download
-    old_state_dict = torch.load('/opt/data/private/xcm/DVC/LDM/squeeze.pth')
+    old_state_dict = torch.load('subnet/src/squeeze.pth')
 
     # rename keys
     new_state_dict = OrderedDict()
