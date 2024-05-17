@@ -26,6 +26,7 @@ from subnet.src.models.CAM_net import *
 from accelerate.logging import get_logger
 from transformers import get_linear_schedule_with_warmup
 from transformers import get_polynomial_decay_schedule_with_warmup
+from transformers import get_constant_schedule
 
 # def geti(lamb):
 #     if lamb == 2048:
@@ -182,78 +183,84 @@ def save_image_tensor2cv2(input_tensor: torch.Tensor, filename):
 #         uvgdrawplt([sumbpp], [sumpsnr], [summsssim], global_step, testfull=True)
 
 
-def testkodak(global_step, test_dataset, net, logger):
+def testkodak(global_step, test_loader, net, logger):
     '''
     Test one model to one test dataset
     In this version, specific designed for Kodak
     '''
-    if accelerator.is_main_process:
         # latents_dtype = next(net.parameters()).dtype
         # sigma = net.scheduler.init_noise_sigma
-        test_loader = DataLoader(dataset=test_dataset, shuffle=False, num_workers=4, batch_size=1, pin_memory=True)
-        net.cuda().eval()
-        with torch.no_grad():
-            sumbpp = 0
-            sumpsnr = 0
-            summsssim = 0
-            sumlpips = 0
-            sumdis = 0
+    net.eval()
+    with torch.no_grad():
+        sub_sumbpp = []
+        sub_sumpsnr = []
+        sub_summsssim = []
+        sub_sumlpips = []
+        sub_sumdis = []
 
-            train_lambda_tensor = torch.tensor(train_lambda)
-            print(f"Test Lambda set to {train_lambda}")
-            cnt = test_loader.__len__()
-            print(cnt)
+        train_lambda_tensor = torch.tensor(train_lambda)
+        print(f"Test Lambda set to {train_lambda}")
+        cnt = test_loader.__len__()
+        print(cnt)
 
-            recon_path_768 = os.path.join("recon",args.exp_name,str(global_step),"kodak_recon_768")
-            recon_path_512 = os.path.join("recon",args.exp_name,str(global_step),"kodak_recon_512")
+        recon_path_768 = os.path.join("recon",args.exp_name,str(global_step),"kodak_recon_768")
+        recon_path_512 = os.path.join("recon",args.exp_name,str(global_step),"kodak_recon_512")
 
-            gt_path_768 = os.path.join(args.test_dataset_path, "images", "768x512")
-            gt_path_512 = os.path.join(args.test_dataset_path, "images", "512x768")
+        gt_path_768 = os.path.join(args.test_dataset_path, "images", "768x512")
+        gt_path_512 = os.path.join(args.test_dataset_path, "images", "512x768")
 
-            for num, input in enumerate(test_loader):
-                frame = Var(input)
-                height, width = frame.shape[-2:]
+        for num, input in enumerate(test_loader):
+            frame = Var(input)
+            height, width = frame.shape[-2:]
 
-                latents_shape = (1, 3, height // 4, width // 4)
-                latents = torch.randn(latents_shape, dtype=latents_dtype)
-                latents = Var(latents * sigma)
+            latents_shape = (1, 3, height // 4, width // 4)
+            latents = torch.randn(latents_shape, dtype=latents_dtype)
+            latents = Var(latents * sigma)
 
-                clipped_recon_image, _, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
+            clipped_recon_image, _, distortion, lps_distortion, bpp = net(frame, latents, train_lambda_tensor, 2048)
 
-                os.makedirs(recon_path_768, exist_ok=True)
-                os.makedirs(recon_path_512, exist_ok=True)
-                h, w = clipped_recon_image.shape[2], clipped_recon_image.shape[3]
-                img_name = 'kodim' + str(num + 1).zfill(2) + '_' + str(train_lambda) + '_recon.png'
-                if w == 768:
-                    save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path_768, img_name))
-                else:
-                    save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path_512, img_name))
+            os.makedirs(recon_path_768, exist_ok=True)
+            os.makedirs(recon_path_512, exist_ok=True)
+            h, w = clipped_recon_image.shape[2], clipped_recon_image.shape[3]
+            img_name = 'kodim' + str(len(test_loader)*accelerator.process_index + num + 1).zfill(3) + '_' + str(train_lambda) + '_recon.png'
+            if w == 768:
+                save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path_768, img_name))
+            else:
+                save_image_tensor2cv2(clipped_recon_image, os.path.join(recon_path_512, img_name))
 
-                bpp_c = torch.mean(bpp).cpu().detach().numpy()
-                psnr_c = torch.mean(10 * (torch.log(1. / distortion) / np.log(10))).cpu().detach().numpy()
-                msssim_c = ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
-                                   size_average=True).numpy()
-                lpips_c = torch.mean(lps_distortion).cpu().detach().numpy()
-                dis = calc_dis(frame, clipped_recon_image)
+            bpp_c = torch.tensor(bpp).to(accelerator.device)
+            psnr_c = torch.tensor(10 * (torch.log(1. / distortion) / np.log(10))).to(accelerator.device)
+            msssim_c = torch.tensor(ms_ssim(clipped_recon_image.cpu().detach(), frame.cpu().detach(), data_range=1.0,
+                                size_average=True)).to(accelerator.device)
+            lpips_c = torch.tensor(torch.mean(lps_distortion)).to(accelerator.device)
+            dis = torch.tensor(calc_dis(frame, clipped_recon_image)).to(accelerator.device)
+            sub_sumbpp.append(bpp_c)
+            sub_sumpsnr.append(psnr_c)
+            sub_summsssim.append(msssim_c)
+            sub_sumlpips.append(lpips_c)
+            sub_sumdis.append(dis) # Multithread, don't modify unless you know what are you doing
+        sub_sumbpp = torch.mean(torch.stack(sub_sumbpp))
+        sub_sumpsnr = torch.mean(torch.stack(sub_sumpsnr))
+        sub_summsssim = torch.mean(torch.stack(sub_summsssim))
+        sub_sumlpips = torch.mean(torch.stack(sub_sumlpips))
+        sub_sumdis = torch.mean(torch.stack(sub_sumdis))
+        
+        sumbpp, sumpsnr, summsssim, sumlpips, sumdis = accelerator.gather_for_metrics((sub_sumbpp, sub_sumpsnr, sub_summsssim, sub_sumlpips, sub_sumdis))
 
-                sumbpp += (bpp_c)
-                sumpsnr += (psnr_c)
-                summsssim += (msssim_c)
-                sumlpips += (lpips_c)
-                sumdis += (dis)
+        if accelerator.is_main_process:
 
             fid_768 = calc_fid(recon_path_768, gt_path_768)
             fid_512 = calc_fid(recon_path_512, gt_path_512)
-            sumfid = (fid_512 * 6 + fid_768 * 18)
+            sumfid = (fid_512 * 6 + fid_768 * 18) /24
 
             log = "\n===== TST:global step %d : " % (global_step)
             logger.info(log)
-            sumbpp /= cnt
-            sumpsnr /= cnt
-            summsssim /= cnt
-            sumlpips /= cnt
-            sumdis /= cnt
-            sumfid /= cnt
+            sumbpp = torch.mean(sumbpp).item()
+            sumpsnr = torch.mean(sumpsnr).item()
+            summsssim = torch.mean(summsssim).item()
+            sumlpips = torch.mean(sumlpips).item()
+            sumdis = torch.mean(sumdis).item()
+            sumfid = sumfid
             log = f"Kodakdataset : average bpp : {sumbpp:.6f}, average psnr : {sumpsnr:.6f}, average msssim: {summsssim:.6f}\n, average lpips: {sumlpips:.6f}, average DIS: {sumdis:.6f}, average fid:{sumfid:6f}\n======"
 
             logger.info(log)
@@ -270,22 +277,15 @@ def clip_gradient(optimizer, grad_clip):
         for param in group["params"]:
             if param.grad is not None:
                 param.grad.data.clamp_(-grad_clip, grad_clip)
-def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, num_workers, scheduler,
+def run(model, batch_size, optimizer, lr, train_loader, global_step, logger, scheduler,test_loader,
         print_step=100, cal_step=10):
 
-    gpu_per_batch = batch_size
+
+
     cur_lr = lr
-    net = model
-
-    train_loader = DataLoader(dataset=train_dataset, shuffle=True, num_workers=num_workers, batch_size=gpu_per_batch,
-                              pin_memory=True)
-    # train_loader, net, optimizer, scheduler = accelerator.prepare(train_loader, net, optimizer, scheduler)
-    train_loader = accelerator.prepare(train_loader)
-    net, optimzier, scheduler = accelerator.prepare(net, optimizer, scheduler)
-
-    net.train()
-    print("Requires_grad parameters number: " + str(utility.count_network_parameters(net)))
-    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(net)))
+    model.train()
+    print("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
+    logger.info("Requires_grad parameters number: " + str(utility.count_network_parameters(model)))
 
     bat_cnt = 0
     cal_cnt = 0
@@ -298,8 +298,9 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, nu
     t0 = datetime.datetime.now()
     try:
         for epoch in range(stepoch, tot_epoch):
-            print("epoch", stepoch)
+            print("epoch", epoch)
             print(f"gloabl_step: {global_step}")
+            logger.info(f"epoch {epoch} with len of train_loader: {len(train_loader)}")
             for batch_idx, input in tqdm(enumerate(train_loader)):
                 global_step += 1
                 bat_cnt += 1
@@ -312,11 +313,11 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, nu
                     var_lambda = np.random.randint(args.lmd_lower_bound, args.lmd_upper_bound)
                 else:
                     raise ValueError(f"Invalid lambda mode: {args.lmd_mode}")
-                clipped_recon_bimage, _, distortion, lpips_distortion, bpp = net(input_image=image2, latents=latents,
-                                                                                 lmd=var_lambda, lmd_boundary=2048,
-                                                                                 previous_frame=None, feature_frame=None,
-                                                                                 quant_noise_feature=quant_noise_feature,
-                                                                                 quant_noise_z=quant_noise_z)
+                clipped_recon_bimage, _, distortion, lpips_distortion, bpp = model(input_image=image2, latents=latents,
+                                                                                lmd=var_lambda, lmd_boundary=2048,
+                                                                                previous_frame=None, feature_frame=None,
+                                                                                quant_noise_feature=quant_noise_feature,
+                                                                                quant_noise_z=quant_noise_z)
 
                 distortion, bpp, lpips_distortion = torch.mean(distortion), torch.mean(bpp), torch.mean(lpips_distortion)
                 dis_loss = calc_dis(image2, clipped_recon_bimage)
@@ -327,7 +328,7 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, nu
 
 
 
-                clip_gradient(optimizer, 0.5)
+                # clip_gradient(optimizer, 0.5)
                 optimizer.step()
                 scheduler.step()
 
@@ -367,17 +368,29 @@ def run(model, batch_size, optimizer, lr, train_dataset, global_step, logger, nu
 
                 if global_step % args.test_interval == 0:
                     logger.info(f"Saving at exp_name: {args.exp_name} at global step {global_step}")
-                    save_model(net, global_step, args.exp_name)
-                    testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
-            logger.info(f"Saving at exp_name: {args.exp_name} at global step {global_step}")
-            save_model(net, global_step, args.exp_name)
-            testkodak(global_step, KodakDataSet(os.path.join(args.test_dataset_path, "kodak")), net, logger)
+                    save_model(model, global_step, args.exp_name)
+                    save_path = os.path.join("snapshot_A", args.exp_name, f"iter{global_step}.model")
+                    if not os.path.exists(save_path):
+                        os.makedirs(save_path, exist_ok=True)
+                    accelerator.save_state(output_dir=save_path)
+                    testkodak(global_step, test_loader, model, logger)
+            # logger.info(f"Saving at exp_name: {args.exp_name} at global step {global_step}")
+        save_model(model, global_step, args.exp_name)
+        save_path = os.path.join("snapshot_A", args.exp_name, f"iter{global_step}.model")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path, exist_ok=True)
+        accelerator.save_state(output_dir=save_path)
+        testkodak(global_step, test_loader, model, logger)
         log = 'Train Epoch : {:02} Loss:\t {:.6f}\t lr:{}'.format(epoch, sumloss / bat_cnt, cur_lr)
         logger.info(log)
         return global_step
     except KeyboardInterrupt:
         logger.info(f"Training interrupted, saving at {global_step} step")
-        save_model(net, global_step, args.exp_name)
+        save_model(model, global_step, args.exp_name)
+        save_path = os.path.join("snapshot_A", args.exp_name, f"iter{global_step}.model")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path, exist_ok=True)
+        accelerator.save_state(output_dir=save_path)
         exit(0)
 
 
@@ -473,56 +486,61 @@ def main():
     #     para.requires_grad = False
     model.unet.requires_grad_(True)
 
+    cur_lr = 2.5e-5
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=cur_lr)
+    scheduler = get_constant_schedule(
+        optimizer
+    )
 
-    pretrain_name = 'NONE'
-    if not args.from_scratch:
-        if args.pretrain != '':
-            print("loading pretrain : ", args.pretrain)
-            global_step = load_model(model, args.pretrain)
-            pretrain_name = args.pretrain
-        else:
-            folder_path = os.path.join('snapshot',args.exp_name)
-            files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-            lastest_file = max(files, key=lambda x: os.path.getctime(os.path.join(folder_path , x)))
-            print("AUTO LOAD : ", lastest_file)
-            print("loading pretrain : ", lastest_file)
-            global_step = load_model(model, os.path.join(folder_path , lastest_file))
-            print(f'global_step: {global_step}')
-            pretrain_name = os.path.join(folder_path , lastest_file)
-
-    net = model
-    bp_parameters = net.parameters()
-
+    train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
+    train_loader = DataLoader(dataset=train_dataset, shuffle=True, num_workers=num_workers, batch_size=gpu_per_batch,
+                              pin_memory=True)
     test_dataset_I = KodakDataSet(os.path.join(args.test_dataset_path, "kodak"))
+    test_loader = DataLoader(dataset=test_dataset_I, shuffle=False, num_workers=0, batch_size=1, pin_memory=True)
+
+    # train_loader, net, optimizer, scheduler = accelerator.prepare(train_loader, net, optimizer, scheduler)
+
+
+
+    model, optimizer, scheduler,train_loader,test_loader = accelerator.prepare(model, optimizer, scheduler,train_loader,test_loader)
+    if args.pretrain != '':
+        accelerator.load_state(args.pretrain)
+        p_str = str(args.pretrain)
+        if p_str.find('iter') != -1 and p_str.find('.model') != -1:
+            st = p_str.find('iter') + 4
+            ed = p_str.find('.model', st)
+            global_step = int(p_str[st:ed])  # return step
+        else:
+            global_step = 0
+        logger.info(f"ACCELERATE: Loaded pretrain model from {args.pretrain}, global step: {global_step}")  
+
+
+
+
     if args.testuvg:
-        testkodak(global_step, test_dataset_I, net, logger)
+        testkodak(global_step, test_loader, model, logger)
         print('Tested Kodak, END')
         exit(0)
 
-    train_dataset = DataSet(latents_dtype, sigma, "./data/vimeo_septuplet/test.txt")
+
 
     global stepoch
     stepoch = global_step // (train_dataset.__len__() // (gpu_per_batch * gpu_num))  # * gpu_num))
 
     log_exp = f'EXPERIMENT: {args.exp_name}'
-    log_pretrain = f'PRETRAIN: {pretrain_name}'
     log_tb = f'TENSORBOARD: {tb_path}'
     log_lambda = f'TST_LAMBDA: {train_lambda}'
     log_lmd_mode = f'TRAIN_LMD_MODE: {args.lmd_mode}, FIXED_LMD: {args.lmd_fixed_value}, LOWER_LMD: {args.lmd_lower_bound}, UPPER_LMD: {args.lmd_upper_bound}'
     logger.info(log_exp)
-    logger.info(log_pretrain)
     logger.info(log_lambda)
     logger.info(log_lmd_mode)
     logger.info(log_tb)
-    cur_lr = 5e-4
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=cur_lr)
-    scheduler = get_polynomial_decay_schedule_with_warmup(
-        optimizer, num_warmup_steps=5000, num_training_steps=70000, lr_end=1e-6
-    )
 
-    global_step = run(global_step=global_step, model=net,
+
+
+    global_step = run(global_step=global_step, model=model,
                           batch_size=gpu_per_batch, optimizer=optimizer, lr=cur_lr,
-                          train_dataset=train_dataset, logger=logger, num_workers=num_workers, scheduler=scheduler)
+                          train_loader=train_loader, logger=logger, scheduler=scheduler, test_loader=test_loader)
     # logger.info(f"Saving at global step {global_step}")
     # save_model(model, global_step,args.exp_name)
 
