@@ -1,0 +1,23 @@
+accelerate==0.24.1
+compressai==1.2.4
+diffusers==0.21.4
+einops==0.3.0
+imageio==2.9.0
+matplotlib==3.7.2
+numpy==1.24.4
+opencv_python==4.1.2.30
+opencv_python_headless==4.8.0.74
+pandas==2.0.3
+# Pillow==9.0.1
+Pillow==10.3.0
+pytorch_fid==0.3.0
+pytorch_msssim==1.0.0
+range_coder==1.1
+scipy==1.9.1
+# skimage
+# tensorboardX==2.6.1
+tensorboardX==2.6.2.2
+torch
+torchvision
+tqdm==4.65.0
+transformers==4.34.1
