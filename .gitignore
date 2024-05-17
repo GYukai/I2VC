@@ -1,1 +1,13 @@
 .idea/
+data/
+pre_trained/
+data
+*.code-workspace
+events/
+logs/
+outfig/
+recon/
+snapshot/
+snapshot_A/
+*.pyc
+/.vscode
