@@ -16,8 +16,6 @@ Official implementation of the paper "[I2VC: A Unified Framework for Intra & Int
 <hr />
 
 
-<hr />
-
 # :rocket: News
 - **(May 22, 2024)**
   - Code for our implementation is now available.
