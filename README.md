@@ -12,7 +12,7 @@
 [![slides](https://img.shields.io/badge/Presentation-Slides-B762C1)](https://drive.google.com/file/d/1GYei-3wjf4OgBVKi9tAzeif606sHBlIA/view?usp=share_link) -->
 
 
-Official implementation of the paper "[$\text{I}^2\text{VC}$ : A Unified Framework for Intra & Inter-frame Video Compression](https://arxiv.org/)".
+Official implementation of the paper "[I2VC: A Unified Framework for Intra & Inter-frame Video Compression](https://arxiv.org/)".
 <hr />
 
 
