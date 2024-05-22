@@ -25,14 +25,18 @@ def save_model(model, iter, exp_name='default'):
 def load_model(model, f):
     print("load DCVC format")
     with open(f, 'rb') as f:
-        pretrained_dict = torch.load(f)
+        # Load the pretrained model weights to CPU first
+        pretrained_dict = torch.load(f, map_location=torch.device('cpu'))
         model_dict = model.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
+    # Move the model to CUDA
+    model = model.to(torch.device('cuda'))
+
     f = str(f)
-    if f.find('iter') != -1 and f.find('.model') != -1:
+    if 'iter' in f and '.model' in f:
         st = f.find('iter') + 4
         ed = f.find('.model', st)
         return int(f[st:ed])  # return step

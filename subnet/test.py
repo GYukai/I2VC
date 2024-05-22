@@ -1,4 +1,15 @@
 # -*- coding: utf8 -*-
+
+'''
+This script is used to test the model on given dataset.
+
+args:
+    --pretrain: the path to the pretrain model
+
+Example Usage: (on content root path)
+    CUDA_VISIBLE_DEVICES=3 PYTHONPATH=. python subnet/test.py --pretrain snapshot/A800_0506_revised/iter77511.model
+'''
+
 import os
 import argparse
 

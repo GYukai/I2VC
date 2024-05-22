@@ -11,3 +11,7 @@ snapshot/
 snapshot_A/
 *.pyc
 /.vscode
+/output
+/temp/
+/fullpreformance/
+result.*
