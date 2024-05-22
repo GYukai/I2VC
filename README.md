@@ -13,7 +13,7 @@
 
 
 Official implementation of the paper "[I2VC: A Unified Framework for Intra & Inter-frame Video Compression](https://arxiv.org/)".
-<hr />
+
 
 
 # :rocket: News
