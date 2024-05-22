@@ -52,7 +52,7 @@ To train the model in the paper, run this command:
 bash scripts/run.sh
 ```
 
-## Evaluation
+# Evaluation
 To evaluate trained model on test data, run:
 ```bash
 bash scripts/test.sh
