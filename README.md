@@ -23,7 +23,7 @@ Official implementation of the paper "[I2VC: A Unified Framework for Intra & Int
 
 <hr />
 
-## Highlights
+# Highlights
 
 ![main figure](doc/main.png)
 
@@ -35,20 +35,18 @@ Official implementation of the paper "[I2VC: A Unified Framework for Intra & Int
 2) **Implicit inter-frame feature alignment:** We leverage DDIM inversion to selective denoise motion-rich areas based on decoded features, achieving implicit inter-frame feature alignment without MEMC.
 3) **Spatio-temporal variable-rate codec:** We design a spatio-temporal variable-rate codec to unify intra- and inter-frame correlations into a conditional coding scheme with variable-rate allocation. 
 
-## Requirements
+# Requirements
 To install requirements:
 ```python
 pip install -r requirements.txt
 ```
 
-## Data preparation
+# Data preparation
 Please follow the instructions at [DATASETS.md](docs/DATASETS.md) to prepare all datasets.
 
-## Model Zoo
 
-Coming soon.
 
-## Training
+# Training
 To train the model in the paper, run this command:
 ```bash
 bash scripts/run.sh
@@ -59,11 +57,13 @@ To evaluate trained model on test data, run:
 ```bash
 bash scripts/test.sh
 ```
+# Model Zoo
 
+Coming soon.
 
 <hr />
 
-## Citation
+# Citation
 If you use our work, please consider citing:
 ```bibtex
 @inproceedings{2024i2vc,
